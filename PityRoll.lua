@@ -97,6 +97,65 @@ local function AddSquareToGrid(className, playerName, rollValue, rollBonus)
     print("|cFF00FF00Added square " .. #gridSquares .. " to the grid.|r")
 end
 
+local function WriteToChat(message)
+	if IsInRaid() then
+		SendChatMessage(message, "RAID")
+	elseif IsInGroup() then
+		SendChatMessage(message, "PARTY")
+	else
+		print(message)
+	end
+end
+
+local function EndSession()
+	if pityRollFrame then
+		pityRollFrame:Hide()
+		frame:UnregisterEvent("CHAT_MSG_SYSTEM")
+		playerRolls = {}
+	end
+end
+
+local function FinishRollSession()
+	if not next(playerRolls) then
+		print("|cFFFF0000Error:|r No rolls recorded. Use /pr add to add players.")
+		return
+	end
+
+	local results = {}
+	for playerName, rollData in pairs(playerRolls) do
+		table.insert(results, {
+			name = playerName,
+			rollValue = rollData.rollValue,
+			rollBonus = rollData.rollBonus,
+			total = rollData.rollValue + rollData.rollBonus
+		})
+	end
+
+	table.sort(results, function(a, b) return a.total > b.total end)
+
+	local message = "PityRoll Results: "
+	local maxLength = 255
+
+	for i, result in ipairs(results) do
+		local formatted = result.name .. " (" .. result.rollValue .. "+" .. result.rollBonus .. "=" .. result.total .. ")"
+		local separator = (i == 1) and "" or ", "
+
+		if #message + #separator + #formatted > maxLength and message ~= "PityRoll Results: " then
+			WriteToChat(message)
+			message = formatted
+		else
+			message = message .. separator .. formatted
+		end
+	end
+
+	WriteToChat(message)
+
+	local winner = results[1]
+	WriteToChat("WINNER: " .. winner.name .. " (" .. winner.total .. ")")
+
+	EndSession()
+end
+
 local function GetPlayerClass(playerName)
 	local name = playerName:match("([^-]+)") or playerName
 
@@ -166,10 +225,12 @@ local function HandleSystemMessage(message)
 	end
 
 	print("|cFF00FF00PityRoll DEBUG:|r Found class: " .. className .. " for " .. playerName)
-	AddSquareToGrid(className, playerName, rollValue, 0)
+	rollBonus = 0
+	AddSquareToGrid(className, playerName, rollValue, rollBonus)
 
 	playerRolls[playerName] = {
 		rollValue = rollValue,
+		rollBonus = rollBonus,
 		className = className
 	}
 end
@@ -249,6 +310,7 @@ SlashCmdList["PITYROLL"] = function(msg)
         print("/pityroll version - Show addon version")
         print("/pityroll new - Open PityRoll frame")
         print("/pityroll add <class> <name> <roll> <bonus> - Add a player's roll to the grid")
+        print("/pityroll finish - Finish roll session and show sorted results")
         print("/pityroll abort - Close the PityRoll frame")
     elseif lowerMsg == "version" then
         print("|cFF00FF00PityRoll|r version: " .. (PityRollDB.version or "1.0.0"))
@@ -268,13 +330,13 @@ SlashCmdList["PITYROLL"] = function(msg)
         end
     elseif lowerMsg == "abort" then
         if pityRollFrame then
-            pityRollFrame:Hide()
-            frame:UnregisterEvent("CHAT_MSG_SYSTEM")
-            playerRolls = {}
+            EndSession()
             print("|cFF00FF00PityRoll|r: Frame closed")
         else
             print("|cFF00FF00PityRoll|r: No frame is currently open")
         end
+    elseif lowerMsg == "finish" then
+        FinishRollSession()
     else
         print("|cFF00FF00PityRoll|r: Unknown command. Type /pityroll help for commands")
     end
