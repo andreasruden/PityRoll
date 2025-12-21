@@ -1,0 +1,8 @@
+## Interface: 11505
+## Title: Pity Roll
+## Notes: An addon for WoW classic to implement a Pity Roll system for raiding
+## Author: Shiro
+## Version: 1.0.0
+## SavedVariables: PityRollDB
+
+PityRoll.lua
