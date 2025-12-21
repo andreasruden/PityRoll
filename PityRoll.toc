@@ -1,4 +1,4 @@
-## Interface: 11505
+## Interface: 11507
 ## Title: Pity Roll
 ## Notes: An addon for WoW classic to implement a Pity Roll system for raiding
 ## Author: Shiro
