@@ -310,6 +310,23 @@ local function ReportPityValues()
 	WriteToChat(message)
 end
 
+local function ShowPityInfo(characterName)
+	if not characterName or characterName == "" then
+		print("|cFFFF0000Error:|r Please provide a character name. Usage: /pr info <name>")
+		return
+	end
+
+	characterName = characterName:sub(1,1):upper() .. characterName:sub(2):lower()
+
+	local pityValue = PityRollDB[characterName]
+
+	if pityValue then
+		print(string.format("|cFF00FF00Pity Info:|r %s has %d pity points", characterName, pityValue))
+	else
+		print(string.format("|cFFFFFF00Warning:|r No pity data found for character '%s'", characterName))
+	end
+end
+
 local function GetPlayerClass(playerName)
 	local name = playerName:match("([^-]+)") or playerName
 
@@ -471,6 +488,7 @@ SlashCmdList["PITYROLL"] = function(msg)
         print("/pityroll finish - Finish roll session and show sorted results")
         print("/pityroll bossend - Award +1 pity to non-rollers and reset tracking")
         print("/pityroll report - Show pity values for all party/raid members")
+        print("/pityroll info <name> - Show pity value for a specific character")
         print("/pityroll abort - Close the PityRoll frame")
     elseif lowerMsg == "version" then
         print("|cFF00FF00PityRoll|r version: " .. (PityRollDB.version or "1.0.0"))
@@ -501,6 +519,9 @@ SlashCmdList["PITYROLL"] = function(msg)
         BossEndSession()
     elseif lowerMsg == "report" then
         ReportPityValues()
+    elseif lowerMsg:match("^info%s+") then
+        local characterName = msg:match("^info%s+(.+)")
+        ShowPityInfo(characterName)
     else
         print("|cFF00FF00PityRoll|r: Unknown command. Type /pityroll help for commands")
     end
