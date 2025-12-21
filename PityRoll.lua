@@ -276,6 +276,40 @@ local function BossEndSession()
 	end
 end
 
+local function ReportPityValues()
+	local allMembers = GetAllGroupMembers()
+
+	local pityList = {}
+	for _, memberName in ipairs(allMembers) do
+		local pityValue = PityRollDB[memberName] or 0
+		table.insert(pityList, {name = memberName, pity = pityValue})
+	end
+
+	if #pityList == 0 then
+		print("|cFF00FF00Pity Report:|r No group members found")
+		return
+	end
+
+	table.sort(pityList, function(a, b) return a.name < b.name end)
+
+	local message = "Pity Report: "
+	local maxLength = 255
+
+	for i, entry in ipairs(pityList) do
+		local formatted = entry.name .. ": " .. entry.pity
+		local separator = (i == 1) and "" or ", "
+
+		if #message + #separator + #formatted > maxLength and message ~= "Pity Report: " then
+			WriteToChat(message)
+			message = formatted
+		else
+			message = message .. separator .. formatted
+		end
+	end
+
+	WriteToChat(message)
+end
+
 local function GetPlayerClass(playerName)
 	local name = playerName:match("([^-]+)") or playerName
 
@@ -436,6 +470,7 @@ SlashCmdList["PITYROLL"] = function(msg)
         print("/pityroll add <class> <name> <roll> <bonus> - Add a player's roll to the grid")
         print("/pityroll finish - Finish roll session and show sorted results")
         print("/pityroll bossend - Award +1 pity to non-rollers and reset tracking")
+        print("/pityroll report - Show pity values for all party/raid members")
         print("/pityroll abort - Close the PityRoll frame")
     elseif lowerMsg == "version" then
         print("|cFF00FF00PityRoll|r version: " .. (PityRollDB.version or "1.0.0"))
@@ -464,6 +499,8 @@ SlashCmdList["PITYROLL"] = function(msg)
         FinishRollSession()
     elseif lowerMsg == "bossend" then
         BossEndSession()
+    elseif lowerMsg == "report" then
+        ReportPityValues()
     else
         print("|cFF00FF00PityRoll|r: Unknown command. Type /pityroll help for commands")
     end
