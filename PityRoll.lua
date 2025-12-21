@@ -24,6 +24,7 @@ local CLASS_COLORS = {
 }
 
 local gridSquares = {}
+local playerRolls = {}
 
 local function AddSquareToGrid(className, playerName, rollValue, rollBonus)
     if not pityRollFrame or not pityRollFrame:IsShown() then
@@ -152,6 +153,11 @@ local function HandleSystemMessage(message)
 	playerName = playerName:match("([^-]+)") or playerName
 	print("|cFF00FF00PityRoll DEBUG:|r Clean name: " .. playerName)
 
+	if playerRolls[playerName] then
+		print("|cFF00FF00PityRoll DEBUG:|r Ignoring duplicate roll from " .. playerName)
+		return
+	end
+
 	local className = GetPlayerClass(playerName)
 
 	if not className then
@@ -161,6 +167,11 @@ local function HandleSystemMessage(message)
 
 	print("|cFF00FF00PityRoll DEBUG:|r Found class: " .. className .. " for " .. playerName)
 	AddSquareToGrid(className, playerName, rollValue, 0)
+
+	playerRolls[playerName] = {
+		rollValue = rollValue,
+		className = className
+	}
 end
 
 local function OnEvent(self, event, ...)
@@ -199,6 +210,7 @@ local function CreatePityRollFrame()
             end
         end
         gridSquares = {}
+        playerRolls = {}
         pityRollFrame:Show()
         frame:RegisterEvent("CHAT_MSG_SYSTEM")
         return
@@ -258,6 +270,7 @@ SlashCmdList["PITYROLL"] = function(msg)
         if pityRollFrame then
             pityRollFrame:Hide()
             frame:UnregisterEvent("CHAT_MSG_SYSTEM")
+            playerRolls = {}
             print("|cFF00FF00PityRoll|r: Frame closed")
         else
             print("|cFF00FF00PityRoll|r: No frame is currently open")
