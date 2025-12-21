@@ -5,6 +5,10 @@ PityRollDB = PityRollDB or {}
 local frame = CreateFrame("Frame")
 local pityRollFrame = nil
 
+-- Pity configuration
+local MAX_PITY = 50
+local PITY_INCREMENT = 5
+
 -- Grid configuration
 local SQUARE_WIDTH = 80
 local SQUARE_HEIGHT = 35
@@ -25,6 +29,7 @@ local CLASS_COLORS = {
 
 local gridSquares = {}
 local playerRolls = {}
+local encounterRollers = {}
 
 local function AddSquareToGrid(className, playerName, rollValue, rollBonus)
     if not pityRollFrame or not pityRollFrame:IsShown() then
@@ -153,7 +158,79 @@ local function FinishRollSession()
 	local winner = results[1]
 	WriteToChat("WINNER: " .. winner.name .. " (" .. winner.total .. ")")
 
+	for playerName, _ in pairs(playerRolls) do
+		if playerName ~= winner.name then
+			local newPity = (PityRollDB[playerName] or 0) + PITY_INCREMENT
+			PityRollDB[playerName] = math.min(newPity, MAX_PITY)
+		end
+	end
+
+	PityRollDB[winner.name] = 0
+
 	EndSession()
+end
+
+local function GetAllGroupMembers()
+	local members = {}
+	local playerName = UnitName("player")
+	if playerName then
+		table.insert(members, playerName)
+	end
+
+	if IsInRaid() then
+		for i = 1, GetNumGroupMembers() do
+			local name = UnitName("raid" .. i)
+			if name then
+				name = name:match("([^-]+)") or name
+				table.insert(members, name)
+			end
+		end
+	elseif IsInGroup() then
+		for i = 1, GetNumSubgroupMembers() do
+			local name = UnitName("party" .. i)
+			if name then
+				name = name:match("([^-]+)") or name
+				table.insert(members, name)
+			end
+		end
+	end
+
+	return members
+end
+
+local function BossEndSession()
+	if not IsInRaid() and not IsInGroup() then
+		print("|cFFFF0000Error:|r You must be in a party or raid to use /pr bossend")
+		return
+	end
+
+	local allMembers = GetAllGroupMembers()
+	local nonRollers = {}
+
+	for _, memberName in ipairs(allMembers) do
+		if not encounterRollers[memberName] then
+			table.insert(nonRollers, memberName)
+		end
+	end
+
+	for _, playerName in ipairs(nonRollers) do
+		local newPity = (PityRollDB[playerName] or 0) + 1
+		PityRollDB[playerName] = math.min(newPity, MAX_PITY)
+	end
+
+	if #nonRollers > 0 then
+		local names = table.concat(nonRollers, ", ")
+		print("|cFF00FF00PityRoll:|r Awarded +1 pity to " .. #nonRollers .. " non-rollers: " .. names)
+	else
+		print("|cFF00FF00PityRoll:|r All group members rolled - no pity awarded")
+	end
+
+	encounterRollers = {}
+	playerRolls = {}
+
+	if pityRollFrame and pityRollFrame:IsShown() then
+		EndSession()
+	end
 end
 
 local function GetPlayerClass(playerName)
@@ -225,7 +302,7 @@ local function HandleSystemMessage(message)
 	end
 
 	print("|cFF00FF00PityRoll DEBUG:|r Found class: " .. className .. " for " .. playerName)
-	rollBonus = 0
+	rollBonus = PityRollDB[playerName] or 0
 	AddSquareToGrid(className, playerName, rollValue, rollBonus)
 
 	playerRolls[playerName] = {
@@ -233,6 +310,8 @@ local function HandleSystemMessage(message)
 		rollBonus = rollBonus,
 		className = className
 	}
+
+	encounterRollers[playerName] = true
 end
 
 local function OnEvent(self, event, ...)
@@ -311,6 +390,7 @@ SlashCmdList["PITYROLL"] = function(msg)
         print("/pityroll new - Open PityRoll frame")
         print("/pityroll add <class> <name> <roll> <bonus> - Add a player's roll to the grid")
         print("/pityroll finish - Finish roll session and show sorted results")
+        print("/pityroll bossend - Award +1 pity to non-rollers and reset tracking")
         print("/pityroll abort - Close the PityRoll frame")
     elseif lowerMsg == "version" then
         print("|cFF00FF00PityRoll|r version: " .. (PityRollDB.version or "1.0.0"))
@@ -337,6 +417,8 @@ SlashCmdList["PITYROLL"] = function(msg)
         end
     elseif lowerMsg == "finish" then
         FinishRollSession()
+    elseif lowerMsg == "bossend" then
+        BossEndSession()
     else
         print("|cFF00FF00PityRoll|r: Unknown command. Type /pityroll help for commands")
     end
