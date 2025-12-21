@@ -31,6 +31,26 @@ local gridSquares = {}
 local playerRolls = {}
 local encounterRollers = {}
 
+local function OnSquareClick(clickFrame)
+	local playerName = clickFrame.playerName
+	local rollData = playerRolls[playerName]
+
+	if not rollData then
+		return
+	end
+
+	rollData.ignored = not rollData.ignored
+
+	local newAlpha = rollData.ignored and 0.3 or 1.0
+	clickFrame.square:SetAlpha(newAlpha)
+
+	if rollData.ignored then
+		clickFrame.nameText:SetTextColor(0.5, 0.5, 0.5, 1)
+	else
+		clickFrame.nameText:SetTextColor(1, 1, 1, 1)
+	end
+end
+
 local function AddSquareToGrid(className, playerName, rollValue, rollBonus)
     if not pityRollFrame or not pityRollFrame:IsShown() then
         print("|cFFFF0000Error:|r Pity frame must be open to add squares. Use /pr new first.")
@@ -93,10 +113,20 @@ local function AddSquareToGrid(className, playerName, rollValue, rollBonus)
     rollText:SetWidth(SQUARE_WIDTH - 4)
     rollText:SetJustifyH("CENTER")
 
+    local clickFrame = CreateFrame("Frame", nil, pityRollFrame)
+    clickFrame:SetSize(SQUARE_WIDTH, SQUARE_HEIGHT)
+    clickFrame:SetPoint("TOPLEFT", square, "TOPLEFT", 0, 0)
+    clickFrame:EnableMouse(true)
+    clickFrame.playerName = playerName
+    clickFrame.square = square
+    clickFrame.nameText = nameText
+    clickFrame:SetScript("OnMouseDown", OnSquareClick)
+
     table.insert(gridSquares, {
         texture = square,
         nameText = nameText,
-        rollText = rollText
+        rollText = rollText,
+        clickFrame = clickFrame
     })
 
     print("|cFF00FF00Added square " .. #gridSquares .. " to the grid.|r")
@@ -128,12 +158,19 @@ local function FinishRollSession()
 
 	local results = {}
 	for playerName, rollData in pairs(playerRolls) do
-		table.insert(results, {
-			name = playerName,
-			rollValue = rollData.rollValue,
-			rollBonus = rollData.rollBonus,
-			total = rollData.rollValue + rollData.rollBonus
-		})
+		if not rollData.ignored then
+			table.insert(results, {
+				name = playerName,
+				rollValue = rollData.rollValue,
+				rollBonus = rollData.rollBonus,
+				total = rollData.rollValue + rollData.rollBonus
+			})
+		end
+	end
+
+	if #results == 0 then
+		print("|cFFFF0000Error:|r No valid rolls to process. All rolls are ignored.")
+		return
 	end
 
 	table.sort(results, function(a, b) return a.total > b.total end)
@@ -158,8 +195,14 @@ local function FinishRollSession()
 	local winner = results[1]
 	WriteToChat("WINNER: " .. winner.name .. " (" .. winner.total .. ")")
 
-	for playerName, _ in pairs(playerRolls) do
-		if playerName ~= winner.name then
+	for playerName, rollData in pairs(playerRolls) do
+		if not rollData.ignored then
+			encounterRollers[playerName] = true
+		end
+	end
+
+	for playerName, rollData in pairs(playerRolls) do
+		if playerName ~= winner.name and not rollData.ignored then
 			local newPity = (PityRollDB[playerName] or 0) + PITY_INCREMENT
 			PityRollDB[playerName] = math.min(newPity, MAX_PITY)
 		end
@@ -308,10 +351,9 @@ local function HandleSystemMessage(message)
 	playerRolls[playerName] = {
 		rollValue = rollValue,
 		rollBonus = rollBonus,
-		className = className
+		className = className,
+		ignored = false
 	}
-
-	encounterRollers[playerName] = true
 end
 
 local function OnEvent(self, event, ...)
@@ -347,6 +389,9 @@ local function CreatePityRollFrame()
             end
             if squareData.rollText then
                 squareData.rollText:Hide()
+            end
+            if squareData.clickFrame then
+                squareData.clickFrame:Hide()
             end
         end
         gridSquares = {}
