@@ -3,28 +3,6 @@ local addonName, addon = ...
 PityRollDB = PityRollDB or {}
 
 local frame = CreateFrame("Frame")
-
-local function OnEvent(self, event, ...)
-    if event == "ADDON_LOADED" then
-        local name = ...
-        if name == addonName then
-            print("|cFF00FF00PityRoll|r addon loaded!")
-
-            if not PityRollDB.initialized then
-                PityRollDB.initialized = true
-                PityRollDB.version = "1.0.0"
-                print("|cFF00FF00PityRoll|r: First time setup complete")
-            end
-        end
-    elseif event == "PLAYER_LOGIN" then
-        print("|cFF00FF00PityRoll|r: Welcome, " .. UnitName("player") .. "!")
-    end
-end
-
-frame:RegisterEvent("ADDON_LOADED")
-frame:RegisterEvent("PLAYER_LOGIN")
-frame:SetScript("OnEvent", OnEvent)
-
 local pityRollFrame = nil
 
 -- Grid configuration
@@ -118,6 +96,97 @@ local function AddSquareToGrid(className, playerName, rollValue, rollBonus)
     print("|cFF00FF00Added square " .. #gridSquares .. " to the grid.|r")
 end
 
+local function GetPlayerClass(playerName)
+	local name = playerName:match("([^-]+)") or playerName
+
+	if name == UnitName("player") then
+		local _, englishClass = UnitClass("player")
+		return englishClass
+	end
+
+	if IsInRaid() then
+		for i = 1, GetNumGroupMembers() do
+			if UnitName("raid" .. i) == name then
+				local _, englishClass = UnitClass("raid" .. i)
+				return englishClass
+			end
+		end
+	end
+
+	if IsInGroup() and not IsInRaid() then
+		for i = 1, GetNumSubgroupMembers() do
+			if UnitName("party" .. i) == name then
+				local _, englishClass = UnitClass("party" .. i)
+				return englishClass
+			end
+		end
+	end
+
+	return nil
+end
+
+local function HandleSystemMessage(message)
+	if not pityRollFrame or not pityRollFrame:IsShown() then
+		print("|cFF00FF00PityRoll DEBUG:|r Frame not shown, ignoring")
+		return
+	end
+
+	-- Pattern matches: "PlayerName rolls 42 (1-100)"
+	local playerName, rollValue, minRoll, maxRoll = message:match("^(.+) rolls (%d+) %((%d+)%-(%d+)%)$")
+
+	if not playerName then
+		return
+	end
+
+	print("|cFF00FF00PityRoll DEBUG:|r Matched roll - Name: " .. playerName .. ", Roll: " .. rollValue .. ", Range: " .. minRoll .. "-" .. maxRoll)
+
+	minRoll = tonumber(minRoll)
+	maxRoll = tonumber(maxRoll)
+	if minRoll ~= 1 or maxRoll ~= 100 then
+		print("|cFF00FF00PityRoll DEBUG:|r Not a 1-100 roll, ignoring")
+		return
+	end
+
+	rollValue = tonumber(rollValue)
+
+	playerName = playerName:match("([^-]+)") or playerName
+	print("|cFF00FF00PityRoll DEBUG:|r Clean name: " .. playerName)
+
+	local className = GetPlayerClass(playerName)
+
+	if not className then
+		print("|cFFFF0000PityRoll:|r Could not determine class for " .. playerName .. " - player may not be in your raid/party")
+		return
+	end
+
+	print("|cFF00FF00PityRoll DEBUG:|r Found class: " .. className .. " for " .. playerName)
+	AddSquareToGrid(className, playerName, rollValue, 0)
+end
+
+local function OnEvent(self, event, ...)
+    if event == "ADDON_LOADED" then
+        local name = ...
+        if name == addonName then
+            print("|cFF00FF00PityRoll|r addon loaded!")
+
+            if not PityRollDB.initialized then
+                PityRollDB.initialized = true
+                PityRollDB.version = "1.0.0"
+                print("|cFF00FF00PityRoll|r: First time setup complete")
+            end
+        end
+    elseif event == "PLAYER_LOGIN" then
+        print("|cFF00FF00PityRoll|r: Welcome, " .. UnitName("player") .. "!")
+    elseif event == "CHAT_MSG_SYSTEM" then
+        local message = ...
+        HandleSystemMessage(message)
+    end
+end
+
+frame:RegisterEvent("ADDON_LOADED")
+frame:RegisterEvent("PLAYER_LOGIN")
+frame:SetScript("OnEvent", OnEvent)
+
 local function CreatePityRollFrame()
     if pityRollFrame then
         for _, squareData in ipairs(gridSquares) do
@@ -131,6 +200,7 @@ local function CreatePityRollFrame()
         end
         gridSquares = {}
         pityRollFrame:Show()
+        frame:RegisterEvent("CHAT_MSG_SYSTEM")
         return
     end
 
@@ -147,8 +217,12 @@ local function CreatePityRollFrame()
     pityRollFrame:RegisterForDrag("LeftButton")
     pityRollFrame:SetScript("OnDragStart", function(self) self:StartMoving() end)
     pityRollFrame:SetScript("OnDragStop", function(self) self:StopMovingOrSizing() end)
+    pityRollFrame:SetScript("OnHide", function(self)
+        frame:UnregisterEvent("CHAT_MSG_SYSTEM")
+    end)
 
     pityRollFrame:Show()
+    frame:RegisterEvent("CHAT_MSG_SYSTEM")
 end
 
 SLASH_PITYROLL1 = "/pityroll"
@@ -183,6 +257,7 @@ SlashCmdList["PITYROLL"] = function(msg)
     elseif lowerMsg == "abort" then
         if pityRollFrame then
             pityRollFrame:Hide()
+            frame:UnregisterEvent("CHAT_MSG_SYSTEM")
             print("|cFF00FF00PityRoll|r: Frame closed")
         else
             print("|cFF00FF00PityRoll|r: No frame is currently open")
