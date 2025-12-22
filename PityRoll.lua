@@ -157,7 +157,28 @@ local function EndSession()
 	end
 end
 
-local function FinishRollSession()
+local function DetectTie(results)
+	if #results < 2 then return nil end
+
+	local highestTotal = results[1].total
+	local tiedPlayers = {}
+
+	for _, result in ipairs(results) do
+		if result.total == highestTotal then
+			table.insert(tiedPlayers, result.name)
+		else
+			break
+		end
+	end
+
+	if #tiedPlayers > 1 then
+		return tiedPlayers
+	end
+
+	return nil
+end
+
+local function FinishRollSession(specifiedWinner)
 	if not next(playerRolls) then
 		print("|cFF00FF00PityRoll:|r No rolls recorded. Closing window.")
 		EndSession()
@@ -183,6 +204,35 @@ local function FinishRollSession()
 
 	table.sort(results, function(a, b) return a.total > b.total end)
 
+	local tiedPlayers = DetectTie(results)
+
+	if specifiedWinner then
+		if not tiedPlayers then
+			print("|cFFFF0000Error:|r Cannot specify a winner when there is no tie")
+			return
+		end
+
+		local winnerIsValid = false
+		for _, name in ipairs(tiedPlayers) do
+			if name:lower() == specifiedWinner:lower() then
+				winnerIsValid = true
+				specifiedWinner = name
+				break
+			end
+		end
+
+		if not winnerIsValid then
+			local tiedList = table.concat(tiedPlayers, ", ")
+			print("|cFFFF0000Error:|r Specified winner '" .. specifiedWinner .. "' is not among tied players: " .. tiedList)
+			return
+		end
+	elseif tiedPlayers then
+		local tiedList = table.concat(tiedPlayers, ", ")
+		print("|cFFFF0000Error:|r There is a tie between: " .. tiedList)
+		print("|cFF00FF00PityRoll:|r Please use '/pr finish <PlayerName>' to specify the winner")
+		return
+	end
+
 	local message = "PityRoll Results: "
 	local maxLength = 255
 
@@ -200,7 +250,17 @@ local function FinishRollSession()
 
 	WriteToChat(message)
 
-	local winner = results[1]
+	local winner
+	if specifiedWinner then
+		for _, result in ipairs(results) do
+			if result.name == specifiedWinner then
+				winner = result
+				break
+			end
+		end
+	else
+		winner = results[1]
+	end
 	WriteToChat("WINNER: " .. winner.name .. " (" .. winner.total .. ")")
 
 	for playerName, rollData in pairs(playerRolls) do
@@ -577,7 +637,7 @@ SlashCmdList["PITYROLL"] = function(msg)
         print("/pityroll version - Show addon version")
         print("/pityroll new - Open PityRoll frame")
         print("/pityroll add <class> <name> <roll> <bonus> - Add a player's roll to the grid")
-        print("/pityroll finish - Finish roll session and show sorted results")
+        print("/pityroll finish [PlayerName] - Finish roll session and show sorted results (specify winner if tied)")
         print("/pityroll bossend - Award +1 pity to non-rollers and reset tracking")
         print("/pityroll report - Show pity values for all party/raid members")
         print("/pityroll info <name> - Show pity value for a specific character")
@@ -606,8 +666,9 @@ SlashCmdList["PITYROLL"] = function(msg)
         else
             print("|cFF00FF00PityRoll|r: No frame is currently open")
         end
-    elseif lowerMsg == "finish" then
-        FinishRollSession()
+    elseif lowerMsg:match("^finish") then
+        local winnerName = msg:match("^finish%s+(.+)")
+        FinishRollSession(winnerName)
     elseif lowerMsg == "bossend" then
         BossEndSession()
     elseif lowerMsg == "report" then
