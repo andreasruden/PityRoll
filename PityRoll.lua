@@ -159,7 +159,8 @@ end
 
 local function FinishRollSession()
 	if not next(playerRolls) then
-		print("|cFFFF0000Error:|r No rolls recorded. Use /pr add to add players.")
+		print("|cFF00FF00PityRoll:|r No rolls recorded. Closing window.")
+		EndSession()
 		return
 	end
 
