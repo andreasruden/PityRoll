@@ -58,6 +58,69 @@ local function OnSquareClick(clickFrame)
 	end
 end
 
+local function CreateSquare(playerName, className, rollValue, rollBonus, isIgnored)
+	local squareCount = #gridSquares
+	local frameWidth = pityRollFrame:GetWidth()
+	local frameHeight = pityRollFrame:GetHeight()
+
+	local usableWidth = frameWidth - (GRID_MARGIN * 2)
+	local usableHeight = frameHeight - (GRID_MARGIN * 2)
+
+	local rowsPerColumn = math.floor((usableHeight + SQUARE_SPACING) / (SQUARE_HEIGHT + SQUARE_SPACING))
+
+	local row = squareCount % rowsPerColumn
+	local col = math.floor(squareCount / rowsPerColumn)
+
+	local x = GRID_MARGIN + (col * (SQUARE_WIDTH + SQUARE_SPACING))
+	local y = -(GRID_MARGIN + (row * (SQUARE_HEIGHT + SQUARE_SPACING)))
+
+	local square = pityRollFrame:CreateTexture(nil, "ARTWORK")
+	square:SetSize(SQUARE_WIDTH, SQUARE_HEIGHT)
+
+	local classColor = CLASS_COLORS[className]
+	square:SetColorTexture(classColor.r, classColor.g, classColor.b, 1)
+	square:SetPoint("TOPLEFT", pityRollFrame, "TOPLEFT", x, y)
+
+	if isIgnored then
+		square:SetAlpha(0.3)
+	end
+
+	local nameText = pityRollFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+	nameText:SetPoint("TOP", square, "TOP", 0, -3)
+	nameText:SetText(playerName)
+	nameText:SetWidth(SQUARE_WIDTH - 4)
+	nameText:SetJustifyH("CENTER")
+
+	if isIgnored then
+		nameText:SetTextColor(0.5, 0.5, 0.5, 1)
+	else
+		nameText:SetTextColor(1, 1, 1, 1)
+	end
+
+	local rollText = pityRollFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+	rollText:SetPoint("BOTTOM", square, "BOTTOM", 0, 3)
+	rollText:SetText(rollValue .. " (+" .. rollBonus .. ")")
+	rollText:SetTextColor(1, 1, 1, 1)
+	rollText:SetWidth(SQUARE_WIDTH - 4)
+	rollText:SetJustifyH("CENTER")
+
+	local clickFrame = CreateFrame("Frame", nil, pityRollFrame)
+	clickFrame:SetSize(SQUARE_WIDTH, SQUARE_HEIGHT)
+	clickFrame:SetPoint("TOPLEFT", square, "TOPLEFT", 0, 0)
+	clickFrame:EnableMouse(true)
+	clickFrame.playerName = playerName
+	clickFrame.square = square
+	clickFrame.nameText = nameText
+	clickFrame:SetScript("OnMouseDown", OnSquareClick)
+
+	table.insert(gridSquares, {
+		texture = square,
+		nameText = nameText,
+		rollText = rollText,
+		clickFrame = clickFrame
+	})
+end
+
 local function AddSquareToGrid(className, playerName, rollValue, rollBonus)
     if not pityRollFrame or not pityRollFrame:IsShown() then
         print("|cFFFF0000Error:|r Pity frame must be open to add squares. Use /pr new first.")
@@ -84,59 +147,41 @@ local function AddSquareToGrid(className, playerName, rollValue, rollBonus)
         return
     end
 
-    local squareCount = #gridSquares
-    local frameWidth = pityRollFrame:GetWidth()
-    local frameHeight = pityRollFrame:GetHeight()
-
-    local usableWidth = frameWidth - (GRID_MARGIN * 2)
-    local usableHeight = frameHeight - (GRID_MARGIN * 2)
-
-    local rowsPerColumn = math.floor((usableHeight + SQUARE_SPACING) / (SQUARE_HEIGHT + SQUARE_SPACING))
-
-    local row = squareCount % rowsPerColumn
-    local col = math.floor(squareCount / rowsPerColumn)
-
-    local x = GRID_MARGIN + (col * (SQUARE_WIDTH + SQUARE_SPACING))
-    local y = -(GRID_MARGIN + (row * (SQUARE_HEIGHT + SQUARE_SPACING)))
-
-    local square = pityRollFrame:CreateTexture(nil, "ARTWORK")
-    square:SetSize(SQUARE_WIDTH, SQUARE_HEIGHT)
-
-    local classColor = CLASS_COLORS[className]
-    square:SetColorTexture(classColor.r, classColor.g, classColor.b, 1)
-    square:SetPoint("TOPLEFT", pityRollFrame, "TOPLEFT", x, y)
-
-    local nameText = pityRollFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    nameText:SetPoint("TOP", square, "TOP", 0, -3)
-    nameText:SetText(playerName)
-    nameText:SetTextColor(1, 1, 1, 1)
-    nameText:SetWidth(SQUARE_WIDTH - 4)
-    nameText:SetJustifyH("CENTER")
-
-    local rollText = pityRollFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    rollText:SetPoint("BOTTOM", square, "BOTTOM", 0, 3)
-    rollText:SetText(rollValue .. " (+" .. rollBonus .. ")")
-    rollText:SetTextColor(1, 1, 1, 1)
-    rollText:SetWidth(SQUARE_WIDTH - 4)
-    rollText:SetJustifyH("CENTER")
-
-    local clickFrame = CreateFrame("Frame", nil, pityRollFrame)
-    clickFrame:SetSize(SQUARE_WIDTH, SQUARE_HEIGHT)
-    clickFrame:SetPoint("TOPLEFT", square, "TOPLEFT", 0, 0)
-    clickFrame:EnableMouse(true)
-    clickFrame.playerName = playerName
-    clickFrame.square = square
-    clickFrame.nameText = nameText
-    clickFrame:SetScript("OnMouseDown", OnSquareClick)
-
-    table.insert(gridSquares, {
-        texture = square,
-        nameText = nameText,
-        rollText = rollText,
-        clickFrame = clickFrame
-    })
+    CreateSquare(playerName, className, rollValue, rollBonus, false)
 
     print("|cFF00FF00Added square " .. #gridSquares .. " to the grid.|r")
+end
+
+local function RegenerateGrid()
+	if not pityRollFrame or not pityRollFrame:IsShown() then
+		print("|cFFFF0000Error:|r Pity frame must be open to regenerate grid")
+		return
+	end
+
+	for _, squareData in ipairs(gridSquares) do
+		squareData.texture:Hide()
+		if squareData.nameText then
+			squareData.nameText:Hide()
+		end
+		if squareData.rollText then
+			squareData.rollText:Hide()
+		end
+		if squareData.clickFrame then
+			squareData.clickFrame:Hide()
+		end
+	end
+	gridSquares = {}
+
+	local sortedPlayers = {}
+	for playerName, _ in pairs(playerRolls) do
+		table.insert(sortedPlayers, playerName)
+	end
+	table.sort(sortedPlayers)
+
+	for _, playerName in ipairs(sortedPlayers) do
+		local rollData = playerRolls[playerName]
+		CreateSquare(playerName, rollData.className, rollData.rollValue, rollData.rollBonus, rollData.ignored)
+	end
 end
 
 local function WriteToChat(message)
@@ -439,6 +484,59 @@ local function AddPity(characterName, amount)
 	end
 end
 
+local function SetRoll(characterName, newRollValue)
+	if not characterName or characterName == "" then
+		print("|cFFFF0000Error:|r Please provide a character name. Usage: /pr setroll <name> <value>")
+		return
+	end
+
+	if not newRollValue or newRollValue == "" then
+		print("|cFFFF0000Error:|r Please provide a roll value. Usage: /pr setroll <name> <value>")
+		return
+	end
+
+	local rollValue = tonumber(newRollValue)
+	if not rollValue then
+		print("|cFFFF0000Error:|r Roll value must be a number")
+		return
+	end
+
+	if rollValue ~= math.floor(rollValue) then
+		print("|cFFFF0000Error:|r Roll value must be a whole number")
+		return
+	end
+
+	if rollValue < 1 or rollValue > 100 then
+		print("|cFFFF0000Error:|r Roll value must be between 1 and 100")
+		return
+	end
+
+	characterName = characterName:sub(1,1):upper() .. characterName:sub(2):lower()
+
+	if not pityRollFrame or not pityRollFrame:IsShown() then
+		print("|cFFFF0000Error:|r Pity frame must be open to modify rolls. Use /pr new first.")
+		return
+	end
+
+	if not playerRolls[characterName] then
+		print(string.format("|cFFFF0000Error:|r Player '%s' has not rolled yet", characterName))
+		return
+	end
+
+	local rollData = playerRolls[characterName]
+	local oldRoll = rollData.rollValue
+	local oldTotal = oldRoll + rollData.rollBonus
+
+	rollData.rollValue = rollValue
+
+	local newTotal = rollValue + rollData.rollBonus
+
+	RegenerateGrid()
+
+	print(string.format("|cFF00FF00PityRoll:|r Updated %s's roll: %d -> %d (total: %d -> %d)",
+		characterName, oldRoll, rollValue, oldTotal, newTotal))
+end
+
 local function GetPlayerClass(playerName)
 	local name = playerName:match("([^-]+)") or playerName
 
@@ -642,6 +740,7 @@ SlashCmdList["PITYROLL"] = function(msg)
         print("/pityroll report - Show pity values for all party/raid members")
         print("/pityroll info <name> - Show pity value for a specific character")
         print("/pityroll addpity <name> <amount> - Manually add pity points to a character")
+        print("/pityroll setroll <name> <value> - Manually set a player's roll (1-100)")
         print("/pityroll abort - Close the PityRoll frame")
     elseif lowerMsg == "version" then
         print("|cFF00FF00PityRoll|r version: " .. (PityRollDB.version or "1.0.0"))
@@ -685,6 +784,16 @@ SlashCmdList["PITYROLL"] = function(msg)
             print("|cFFFF0000Error:|r Usage: /pr addpity <name> <amount>")
         else
             AddPity(args[2], args[3])
+        end
+    elseif lowerMsg:match("^setroll%s+") then
+        local args = {}
+        for arg in msg:gmatch("%S+") do
+            table.insert(args, arg)
+        end
+        if #args < 3 then
+            print("|cFFFF0000Error:|r Usage: /pr setroll <name> <value>")
+        else
+            SetRoll(args[2], args[3])
         end
     else
         print("|cFF00FF00PityRoll|r: Unknown command. Type /pityroll help for commands")
