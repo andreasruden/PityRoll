@@ -9,6 +9,13 @@ local pityRollFrame = nil
 local MAX_PITY = 50
 local PITY_INCREMENT = 5
 
+-- Rate limiting configuration
+local MAX_WHISPERS_PER_WINDOW = 5
+local RATE_LIMIT_WINDOW = 30
+
+-- Track whisper timestamps
+local whisperTimestamps = {}
+
 -- Grid configuration
 local SQUARE_WIDTH = 80
 local SQUARE_HEIGHT = 35
@@ -400,6 +407,42 @@ local function GetPlayerClass(playerName)
 	return nil
 end
 
+local function HandleWhisperCommand(message, sender)
+	sender = sender:match("([^-]+)")
+
+	local lowerMsg = message:lower():trim()
+	if lowerMsg ~= "!pity" then
+		return
+	end
+
+	local currentTime = GetTime()
+	local windowStart = currentTime - RATE_LIMIT_WINDOW
+
+	local newTimestamps = {}
+	for _, timestamp in ipairs(whisperTimestamps) do
+		if timestamp > windowStart then
+			table.insert(newTimestamps, timestamp)
+		end
+	end
+	whisperTimestamps = newTimestamps
+
+	if #whisperTimestamps >= MAX_WHISPERS_PER_WINDOW then
+		return
+	end
+
+	table.insert(whisperTimestamps, currentTime)
+
+	local normalizedName = sender:sub(1,1):upper() .. sender:sub(2):lower()
+
+	local pityValue = PityRollDB[normalizedName]
+
+	if pityValue then
+		SendChatMessage(normalizedName .. "'s current pity: " .. pityValue .. "/" .. MAX_PITY, "WHISPER", nil, sender)
+	else
+		SendChatMessage(normalizedName .. " is not in the PityRoll database yet.", "WHISPER", nil, sender)
+	end
+end
+
 local function HandleSystemMessage(message)
 	if not pityRollFrame or not pityRollFrame:IsShown() then
 		print("|cFF00FF00PityRoll DEBUG:|r Frame not shown, ignoring")
@@ -468,11 +511,15 @@ local function OnEvent(self, event, ...)
     elseif event == "CHAT_MSG_SYSTEM" then
         local message = ...
         HandleSystemMessage(message)
+    elseif event == "CHAT_MSG_WHISPER" then
+        local message, sender = ...
+        HandleWhisperCommand(message, sender)
     end
 end
 
 frame:RegisterEvent("ADDON_LOADED")
 frame:RegisterEvent("PLAYER_LOGIN")
+frame:RegisterEvent("CHAT_MSG_WHISPER")
 frame:SetScript("OnEvent", OnEvent)
 
 local function CreatePityRollFrame()
