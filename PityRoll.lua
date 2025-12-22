@@ -327,6 +327,50 @@ local function ShowPityInfo(characterName)
 	end
 end
 
+local function AddPity(characterName, amount)
+	if not characterName or characterName == "" then
+		print("|cFFFF0000Error:|r Please provide a character name. Usage: /pr addpity <name> <amount>")
+		return
+	end
+
+	if not amount or amount == "" then
+		print("|cFFFF0000Error:|r Please provide an amount. Usage: /pr addpity <name> <amount>")
+		return
+	end
+
+	local pityAmount = tonumber(amount)
+	if not pityAmount or pityAmount == 0 then
+		print("|cFFFF0000Error:|r Amount must be a non-zero number")
+		return
+	end
+
+	characterName = characterName:sub(1,1):upper() .. characterName:sub(2):lower()
+
+	if PityRollDB[characterName] == nil then
+		print(string.format("|cFFFF0000Error:|r Character '%s' not found in pity database.", characterName))
+		return
+	end
+
+	local oldPity = PityRollDB[characterName]
+	local newPity = math.max(0, math.min(oldPity + pityAmount, MAX_PITY))
+	local actualChange = newPity - oldPity
+
+	PityRollDB[characterName] = newPity
+
+	local verb = actualChange >= 0 and "Added" or "Removed"
+	local sign = actualChange >= 0 and "+" or ""
+
+	if actualChange ~= pityAmount then
+		if newPity == MAX_PITY then
+			print(string.format("|cFF00FF00PityRoll:|r %s %s%d pity to %s (was: %d, now: %d - CAPPED AT MAXIMUM)", verb, sign, actualChange, characterName, oldPity, newPity))
+		elseif newPity == 0 then
+			print(string.format("|cFF00FF00PityRoll:|r %s %s%d pity from %s (was: %d, now: %d - FLOORED AT ZERO)", verb, sign, actualChange, characterName, oldPity, newPity))
+		end
+	else
+		print(string.format("|cFF00FF00PityRoll:|r %s %s%d pity to %s (was: %d, now: %d)", verb, sign, actualChange, characterName, oldPity, newPity))
+	end
+end
+
 local function GetPlayerClass(playerName)
 	local name = playerName:match("([^-]+)") or playerName
 
@@ -489,6 +533,7 @@ SlashCmdList["PITYROLL"] = function(msg)
         print("/pityroll bossend - Award +1 pity to non-rollers and reset tracking")
         print("/pityroll report - Show pity values for all party/raid members")
         print("/pityroll info <name> - Show pity value for a specific character")
+        print("/pityroll addpity <name> <amount> - Manually add pity points to a character")
         print("/pityroll abort - Close the PityRoll frame")
     elseif lowerMsg == "version" then
         print("|cFF00FF00PityRoll|r version: " .. (PityRollDB.version or "1.0.0"))
@@ -522,6 +567,16 @@ SlashCmdList["PITYROLL"] = function(msg)
     elseif lowerMsg:match("^info%s+") then
         local characterName = msg:match("^info%s+(.+)")
         ShowPityInfo(characterName)
+    elseif lowerMsg:match("^addpity%s+") then
+        local args = {}
+        for arg in msg:gmatch("%S+") do
+            table.insert(args, arg)
+        end
+        if #args < 3 then
+            print("|cFFFF0000Error:|r Usage: /pr addpity <name> <amount>")
+        else
+            AddPity(args[2], args[3])
+        end
     else
         print("|cFF00FF00PityRoll|r: Unknown command. Type /pityroll help for commands")
     end
