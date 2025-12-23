@@ -26,6 +26,35 @@ local GRID_MARGIN = 10
 -- "Forward Declarations"
 local CreateButtonFrame
 local HideButtonFrame
+local BossBeginSession
+
+-- LibDataBroker minimap button
+local LDB = LibStub("LibDataBroker-1.1", true)
+local icon = LDB and LDB:NewDataObject("PityRoll", {
+	type = "launcher",
+	text = "PityRoll",
+	icon = "Interface\\Icons\\INV_Misc_Dice_01",
+	OnClick = function(self, button)
+		if button == "LeftButton" then
+			if buttonFrame and buttonFrame:IsShown() then
+				print("|cFF00FF00PityRoll:|r Boss encounter already active")
+				return
+			end
+			BossBeginSession()
+		elseif button == "RightButton" then
+			print("|cFF00FF00PityRoll:|r TODO: Write some help here")
+		end
+	end,
+	OnTooltipShow = function(tooltip)
+		if not tooltip or not tooltip.AddLine then return end
+		tooltip:AddLine("PityRoll")
+		tooltip:AddLine("|cFFFFFFFFLeft-click:|r Start boss encounter")
+		tooltip:AddLine("|cFFFFFFFFRight-click:|r Show help")
+		if buttonFrame and buttonFrame:IsShown() then
+			tooltip:AddLine("|cFF00FF00Boss encounter active|r")
+		end
+	end,
+})
 
 local CLASS_COLORS = {
 	WARRIOR = {r = 0.78, g = 0.61, b = 0.43},
@@ -443,7 +472,7 @@ local function SaveButtonFramePosition()
 	}
 end
 
-local function BossBeginSession()
+function BossBeginSession()
 	if not IsInRaid() and not IsInGroup() then
 		print("|cFFFF0000Error:|r You must be in a party or raid to use /pr bossbegin")
 		return
@@ -845,7 +874,22 @@ local function OnEvent(self, event, ...)
                     xOffset = 0,
                     yOffset = -200
                 }
+                PityRollDB.minimap = {
+                    hide = false,
+                }
                 print("|cFF00FF00PityRoll|r: First time setup complete")
+            end
+
+            -- Register minimap button with saved position
+            local LibDBIcon = LibStub("LibDBIcon-1.0", true)
+            if LibDBIcon and icon then
+                if not PityRollDB.minimap then
+                    PityRollDB.minimap = { hide = false }
+                end
+                LibDBIcon:Register("PityRoll", icon, PityRollDB.minimap)
+                if not PityRollDB.minimap.hide then
+                    LibDBIcon:Show("PityRoll")
+                end
             end
         end
     elseif event == "PLAYER_LOGIN" then
