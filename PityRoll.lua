@@ -4,6 +4,7 @@ PityRollDB = PityRollDB or {}
 
 local frame = CreateFrame("Frame")
 local pityRollFrame = nil
+local buttonFrame = nil
 
 -- Pity configuration
 local MAX_PITY = 50
@@ -354,6 +355,80 @@ local function GetAllGroupMembers()
 	return members
 end
 
+local function CreateButtonFrame()
+	if buttonFrame then
+		buttonFrame:Show()
+		return
+	end
+
+	buttonFrame = CreateFrame("Frame", "PityRollButtonFrame", UIParent)
+	buttonFrame:SetSize(100, 30)
+
+	if PityRollDB.buttonFramePosition then
+		local pos = PityRollDB.buttonFramePosition
+		buttonFrame:SetPoint(pos.point, UIParent, pos.relativePoint, pos.xOffset, pos.yOffset)
+	else
+		buttonFrame:SetPoint("CENTER", UIParent, "CENTER", 0, -200)
+	end
+
+	local bg = buttonFrame:CreateTexture(nil, "BACKGROUND")
+	bg:SetAllPoints(true)
+	bg:SetColorTexture(0.1, 0.1, 0.1, 0.8)
+
+	buttonFrame:SetMovable(true)
+	buttonFrame:EnableMouse(true)
+	buttonFrame:RegisterForDrag("LeftButton")
+	buttonFrame:SetScript("OnDragStart", function(self) self:StartMoving() end)
+	buttonFrame:SetScript("OnDragStop", function(self)
+		self:StopMovingOrSizing()
+		SaveButtonFramePosition()
+	end)
+
+	local finishButton = CreateFrame("Button", nil, buttonFrame, "UIPanelButtonTemplate")
+	finishButton:SetSize(90, 25)
+	finishButton:SetPoint("CENTER", buttonFrame, "CENTER", 0, 0)
+	finishButton:SetText("Finish")
+	finishButton:SetScript("OnClick", function()
+		FinishRollSession(nil)
+	end)
+
+	buttonFrame.finishButton = finishButton
+
+	buttonFrame:Show()
+end
+
+local function SaveButtonFramePosition()
+	if not buttonFrame then
+		return
+	end
+
+	local point, relativeTo, relativePoint, xOffset, yOffset = buttonFrame:GetPoint()
+
+	PityRollDB.buttonFramePosition = {
+		point = point,
+		relativeTo = nil,
+		relativePoint = relativePoint,
+		xOffset = xOffset,
+		yOffset = yOffset
+	}
+end
+
+local function HideButtonFrame()
+	if buttonFrame then
+		buttonFrame:Hide()
+	end
+end
+
+local function BossBeginSession()
+	if not IsInRaid() and not IsInGroup() then
+		print("|cFFFF0000Error:|r You must be in a party or raid to use /pr bossbegin")
+		return
+	end
+
+	CreateButtonFrame()
+	print("|cFF00FF00PityRoll:|r Boss encounter started. Button frame displayed.")
+end
+
 local function BossEndSession()
 	if not IsInRaid() and not IsInGroup() then
 		print("|cFFFF0000Error:|r You must be in a party or raid to use /pr bossend")
@@ -387,6 +462,8 @@ local function BossEndSession()
 	if pityRollFrame and pityRollFrame:IsShown() then
 		EndSession()
 	end
+
+	HideButtonFrame()
 end
 
 local function ReportPityValues()
@@ -662,6 +739,13 @@ local function OnEvent(self, event, ...)
             if not PityRollDB.initialized then
                 PityRollDB.initialized = true
                 PityRollDB.version = "1.0.0"
+                PityRollDB.buttonFramePosition = {
+                    point = "CENTER",
+                    relativeTo = nil,
+                    relativePoint = "CENTER",
+                    xOffset = 0,
+                    yOffset = -200
+                }
                 print("|cFF00FF00PityRoll|r: First time setup complete")
             end
         end
@@ -736,6 +820,7 @@ SlashCmdList["PITYROLL"] = function(msg)
         print("/pityroll new - Open PityRoll frame")
         print("/pityroll add <class> <name> <roll> <bonus> - Add a player's roll to the grid")
         print("/pityroll finish [PlayerName] - Finish roll session and show sorted results (specify winner if tied)")
+        print("/pityroll bossbegin - Show button frame for boss encounter")
         print("/pityroll bossend - Award +1 pity to non-rollers and reset tracking")
         print("/pityroll report - Show pity values for all party/raid members")
         print("/pityroll info <name> - Show pity value for a specific character")
@@ -768,6 +853,8 @@ SlashCmdList["PITYROLL"] = function(msg)
     elseif lowerMsg:match("^finish") then
         local winnerName = msg:match("^finish%s+(.+)")
         FinishRollSession(winnerName)
+    elseif lowerMsg == "bossbegin" then
+        BossBeginSession()
     elseif lowerMsg == "bossend" then
         BossEndSession()
     elseif lowerMsg == "report" then
