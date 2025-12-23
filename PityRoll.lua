@@ -195,9 +195,24 @@ local function WriteToChat(message)
 	end
 end
 
+local function UpdateButtonFrameButtons()
+	if not buttonFrame then
+		return
+	end
+
+	if pityRollFrame and pityRollFrame:IsShown() then
+		buttonFrame.newButton:Disable()
+		buttonFrame.finishButton:Enable()
+	else
+		buttonFrame.newButton:Enable()
+		buttonFrame.finishButton:Disable()
+	end
+end
+
 local function EndSession()
 	if pityRollFrame then
 		pityRollFrame:Hide()
+		UpdateButtonFrameButtons()
 		frame:UnregisterEvent("CHAT_MSG_SYSTEM")
 		playerRolls = {}
 	end
@@ -355,6 +370,72 @@ local function GetAllGroupMembers()
 	return members
 end
 
+local function CreatePityRollFrame()
+    if pityRollFrame then
+        for _, squareData in ipairs(gridSquares) do
+            squareData.texture:Hide()
+            if squareData.nameText then
+                squareData.nameText:Hide()
+            end
+            if squareData.rollText then
+                squareData.rollText:Hide()
+            end
+            if squareData.clickFrame then
+                squareData.clickFrame:Hide()
+            end
+        end
+        gridSquares = {}
+        playerRolls = {}
+        pityRollFrame:Show()
+        UpdateButtonFrameButtons()
+        frame:RegisterEvent("CHAT_MSG_SYSTEM")
+        return
+    end
+
+    pityRollFrame = CreateFrame("Frame", "PityRollFrame", UIParent)
+    pityRollFrame:SetSize(300, 200)
+    pityRollFrame:SetPoint("CENTER")
+
+    local bg = pityRollFrame:CreateTexture(nil, "BACKGROUND")
+    bg:SetAllPoints(true)
+    bg:SetColorTexture(0.1, 0.1, 0.1, 0.9)
+
+    pityRollFrame:SetMovable(true)
+    pityRollFrame:EnableMouse(true)
+    pityRollFrame:RegisterForDrag("LeftButton")
+    pityRollFrame:SetScript("OnDragStart", function(self) self:StartMoving() end)
+    pityRollFrame:SetScript("OnDragStop", function(self) self:StopMovingOrSizing() end)
+    pityRollFrame:SetScript("OnHide", function(self)
+        frame:UnregisterEvent("CHAT_MSG_SYSTEM")
+        UpdateButtonFrameButtons()
+    end)
+
+    pityRollFrame:Show()
+    UpdateButtonFrameButtons()
+    frame:RegisterEvent("CHAT_MSG_SYSTEM")
+end
+
+local function NewRollSession()
+	CreatePityRollFrame()
+	UpdateButtonFrameButtons()
+end
+
+local function SaveButtonFramePosition()
+	if not buttonFrame then
+		return
+	end
+
+	local point, relativeTo, relativePoint, xOffset, yOffset = buttonFrame:GetPoint()
+
+	PityRollDB.buttonFramePosition = {
+		point = point,
+		relativeTo = nil,
+		relativePoint = relativePoint,
+		xOffset = xOffset,
+		yOffset = yOffset
+	}
+end
+
 local function CreateButtonFrame()
 	if buttonFrame then
 		buttonFrame:Show()
@@ -362,7 +443,7 @@ local function CreateButtonFrame()
 	end
 
 	buttonFrame = CreateFrame("Frame", "PityRollButtonFrame", UIParent)
-	buttonFrame:SetSize(100, 30)
+	buttonFrame:SetSize(200, 30)
 
 	if PityRollDB.buttonFramePosition then
 		local pos = PityRollDB.buttonFramePosition
@@ -386,31 +467,26 @@ local function CreateButtonFrame()
 
 	local finishButton = CreateFrame("Button", nil, buttonFrame, "UIPanelButtonTemplate")
 	finishButton:SetSize(90, 25)
-	finishButton:SetPoint("CENTER", buttonFrame, "CENTER", 0, 0)
-	finishButton:SetText("Finish")
+	finishButton:SetPoint("CENTER", buttonFrame, "CENTER", 55, 0)
+	finishButton:SetText("Award Item")
 	finishButton:SetScript("OnClick", function()
 		FinishRollSession(nil)
 	end)
 
 	buttonFrame.finishButton = finishButton
 
+	local newButton = CreateFrame("Button", nil, buttonFrame, "UIPanelButtonTemplate")
+	newButton:SetSize(90, 25)
+	newButton:SetPoint("CENTER", buttonFrame, "CENTER", -55, 0)
+	newButton:SetText("New Item")
+	newButton:SetScript("OnClick", function()
+		NewRollSession()
+	end)
+
+	buttonFrame.newButton = newButton
+
+	UpdateButtonFrameButtons()
 	buttonFrame:Show()
-end
-
-local function SaveButtonFramePosition()
-	if not buttonFrame then
-		return
-	end
-
-	local point, relativeTo, relativePoint, xOffset, yOffset = buttonFrame:GetPoint()
-
-	PityRollDB.buttonFramePosition = {
-		point = point,
-		relativeTo = nil,
-		relativePoint = relativePoint,
-		xOffset = xOffset,
-		yOffset = yOffset
-	}
 end
 
 local function HideButtonFrame()
@@ -426,6 +502,7 @@ local function BossBeginSession()
 	end
 
 	CreateButtonFrame()
+	UpdateButtonFrameButtons()
 	print("|cFF00FF00PityRoll:|r Boss encounter started. Button frame displayed.")
 end
 
@@ -765,48 +842,6 @@ frame:RegisterEvent("PLAYER_LOGIN")
 frame:RegisterEvent("CHAT_MSG_WHISPER")
 frame:SetScript("OnEvent", OnEvent)
 
-local function CreatePityRollFrame()
-    if pityRollFrame then
-        for _, squareData in ipairs(gridSquares) do
-            squareData.texture:Hide()
-            if squareData.nameText then
-                squareData.nameText:Hide()
-            end
-            if squareData.rollText then
-                squareData.rollText:Hide()
-            end
-            if squareData.clickFrame then
-                squareData.clickFrame:Hide()
-            end
-        end
-        gridSquares = {}
-        playerRolls = {}
-        pityRollFrame:Show()
-        frame:RegisterEvent("CHAT_MSG_SYSTEM")
-        return
-    end
-
-    pityRollFrame = CreateFrame("Frame", "PityRollFrame", UIParent)
-    pityRollFrame:SetSize(300, 200)
-    pityRollFrame:SetPoint("CENTER")
-
-    local bg = pityRollFrame:CreateTexture(nil, "BACKGROUND")
-    bg:SetAllPoints(true)
-    bg:SetColorTexture(0.1, 0.1, 0.1, 0.9)
-
-    pityRollFrame:SetMovable(true)
-    pityRollFrame:EnableMouse(true)
-    pityRollFrame:RegisterForDrag("LeftButton")
-    pityRollFrame:SetScript("OnDragStart", function(self) self:StartMoving() end)
-    pityRollFrame:SetScript("OnDragStop", function(self) self:StopMovingOrSizing() end)
-    pityRollFrame:SetScript("OnHide", function(self)
-        frame:UnregisterEvent("CHAT_MSG_SYSTEM")
-    end)
-
-    pityRollFrame:Show()
-    frame:RegisterEvent("CHAT_MSG_SYSTEM")
-end
-
 SLASH_PITYROLL1 = "/pityroll"
 SLASH_PITYROLL2 = "/pr"
 SlashCmdList["PITYROLL"] = function(msg)
@@ -830,7 +865,7 @@ SlashCmdList["PITYROLL"] = function(msg)
     elseif lowerMsg == "version" then
         print("|cFF00FF00PityRoll|r version: " .. (PityRollDB.version or "1.0.0"))
     elseif lowerMsg == "new" then
-        CreatePityRollFrame()
+        NewRollSession()
     elseif lowerMsg:match("^add%s+") then
         local args = {}
         for arg in msg:gmatch("%S+") do
