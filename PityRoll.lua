@@ -27,6 +27,7 @@ local GRID_MARGIN = 10
 local CreateButtonFrame
 local HideButtonFrame
 local BossBeginSession
+local SavePityFramePosition
 
 -- LibDataBroker minimap button
 local LDB = LibStub("LibDataBroker-1.1", true)
@@ -430,7 +431,13 @@ local function CreatePityRollFrame()
 
     pityRollFrame = CreateFrame("Frame", "PityRollFrame", UIParent)
     pityRollFrame:SetSize(300, 200)
-    pityRollFrame:SetPoint("CENTER")
+
+    if PityRollDB.pityFramePosition then
+        local pos = PityRollDB.pityFramePosition
+        pityRollFrame:SetPoint(pos.point, UIParent, pos.relativePoint, pos.xOffset, pos.yOffset)
+    else
+        pityRollFrame:SetPoint("CENTER")
+    end
 
     local bg = pityRollFrame:CreateTexture(nil, "BACKGROUND")
     bg:SetAllPoints(true)
@@ -440,7 +447,10 @@ local function CreatePityRollFrame()
     pityRollFrame:EnableMouse(true)
     pityRollFrame:RegisterForDrag("LeftButton")
     pityRollFrame:SetScript("OnDragStart", function(self) self:StartMoving() end)
-    pityRollFrame:SetScript("OnDragStop", function(self) self:StopMovingOrSizing() end)
+    pityRollFrame:SetScript("OnDragStop", function(self)
+        self:StopMovingOrSizing()
+        SavePityFramePosition()
+    end)
     pityRollFrame:SetScript("OnHide", function(self)
         frame:UnregisterEvent("CHAT_MSG_SYSTEM")
         UpdateButtonFrameButtons()
@@ -472,7 +482,23 @@ local function SaveButtonFramePosition()
 	}
 end
 
-function BossBeginSession()
+SavePityFramePosition = function()
+	if not pityRollFrame then
+		return
+	end
+
+	local point, relativeTo, relativePoint, xOffset, yOffset = pityRollFrame:GetPoint()
+
+	PityRollDB.pityFramePosition = {
+		point = point,
+		relativeTo = nil,
+		relativePoint = relativePoint,
+		xOffset = xOffset,
+		yOffset = yOffset
+	}
+end
+
+BossBeginSession = function()
 	if not IsInRaid() and not IsInGroup() then
 		print("|cFFFF0000Error:|r You must be in a party or raid to use /pr bossbegin")
 		return
@@ -873,6 +899,13 @@ local function OnEvent(self, event, ...)
                     relativePoint = "CENTER",
                     xOffset = 0,
                     yOffset = -200
+                }
+                PityRollDB.pityFramePosition = {
+                    point = "CENTER",
+                    relativeTo = nil,
+                    relativePoint = "CENTER",
+                    xOffset = 0,
+                    yOffset = 0
                 }
                 PityRollDB.minimap = {
                     hide = false,
