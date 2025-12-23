@@ -28,6 +28,7 @@ local CreateButtonFrame
 local HideButtonFrame
 local BossBeginSession
 local SavePityFramePosition
+local UpdateButtonFrameButtons
 
 -- LibDataBroker minimap button
 local LDB = LibStub("LibDataBroker-1.1", true)
@@ -74,11 +75,48 @@ local playerRolls = {}
 local encounterRollers = {}
 local hasFinishedRollSession = false
 
+local tieResolutionMode = false
+local tiedPlayers = nil
+local selectedWinner = nil
+
 local function OnSquareClick(clickFrame)
 	local playerName = clickFrame.playerName
 	local rollData = playerRolls[playerName]
 
 	if not rollData then
+		return
+	end
+
+	if tieResolutionMode then
+		local isTiedPlayer = false
+		for _, tiedName in ipairs(tiedPlayers) do
+			if tiedName == playerName then
+				isTiedPlayer = true
+				break
+			end
+		end
+
+		if not isTiedPlayer then
+			return
+		end
+
+		if selectedWinner then
+			for _, squareData in ipairs(gridSquares) do
+				if squareData.clickFrame.playerName == selectedWinner then
+					squareData.clickFrame.selectionIndicator:Hide()
+					squareData.clickFrame.tieIndicator:Show()
+					break
+				end
+			end
+		end
+
+		selectedWinner = playerName
+		clickFrame.tieIndicator:Hide()
+		clickFrame.selectionIndicator:Show()
+
+		print("|cFF00FF00PityRoll:|r Selected " .. playerName .. " as winner. Click Award Item again to confirm.")
+
+		UpdateButtonFrameButtons()
 		return
 	end
 
@@ -121,6 +159,18 @@ local function CreateSquare(playerName, className, rollValue, rollBonus, isIgnor
 		square:SetAlpha(0.3)
 	end
 
+	local tieIndicator = pityRollFrame:CreateTexture(nil, "OVERLAY")
+	tieIndicator:SetSize(SQUARE_WIDTH + 4, SQUARE_HEIGHT + 4)
+	tieIndicator:SetColorTexture(1.0, 0.84, 0.0, 0.8)
+	tieIndicator:SetPoint("CENTER", square, "CENTER", 0, 0)
+	tieIndicator:Hide()
+
+	local selectionIndicator = pityRollFrame:CreateTexture(nil, "OVERLAY")
+	selectionIndicator:SetSize(SQUARE_WIDTH + 6, SQUARE_HEIGHT + 6)
+	selectionIndicator:SetColorTexture(0.0, 1.0, 0.0, 1.0)
+	selectionIndicator:SetPoint("CENTER", square, "CENTER", 0, 0)
+	selectionIndicator:Hide()
+
 	local nameText = pityRollFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
 	nameText:SetPoint("TOP", square, "TOP", 0, -3)
 	nameText:SetText(playerName)
@@ -147,13 +197,17 @@ local function CreateSquare(playerName, className, rollValue, rollBonus, isIgnor
 	clickFrame.playerName = playerName
 	clickFrame.square = square
 	clickFrame.nameText = nameText
+	clickFrame.tieIndicator = tieIndicator
+	clickFrame.selectionIndicator = selectionIndicator
 	clickFrame:SetScript("OnMouseDown", OnSquareClick)
 
 	table.insert(gridSquares, {
 		texture = square,
 		nameText = nameText,
 		rollText = rollText,
-		clickFrame = clickFrame
+		clickFrame = clickFrame,
+		tieIndicator = tieIndicator,
+		selectionIndicator = selectionIndicator
 	})
 end
 
@@ -218,6 +272,23 @@ local function RegenerateGrid()
 		local rollData = playerRolls[playerName]
 		CreateSquare(playerName, rollData.className, rollData.rollValue, rollData.rollBonus, rollData.ignored)
 	end
+
+	if tieResolutionMode and tiedPlayers then
+		for _, squareData in ipairs(gridSquares) do
+			local playerName = squareData.clickFrame.playerName
+
+			for _, tiedName in ipairs(tiedPlayers) do
+				if tiedName == playerName then
+					if selectedWinner == playerName then
+						squareData.clickFrame.selectionIndicator:Show()
+					else
+						squareData.clickFrame.tieIndicator:Show()
+					end
+					break
+				end
+			end
+		end
+	end
 end
 
 local function WriteToChat(message)
@@ -230,14 +301,19 @@ local function WriteToChat(message)
 	end
 end
 
-local function UpdateButtonFrameButtons()
+UpdateButtonFrameButtons = function()
 	if not buttonFrame then
 		return
 	end
 
 	if pityRollFrame and pityRollFrame:IsShown() then
 		buttonFrame.newButton:Disable()
-		buttonFrame.finishButton:Enable()
+
+		if tieResolutionMode and not selectedWinner then
+			buttonFrame.finishButton:Disable()
+		else
+			buttonFrame.finishButton:Enable()
+		end
 	else
 		buttonFrame.newButton:Enable()
 		buttonFrame.finishButton:Disable()
@@ -245,6 +321,10 @@ local function UpdateButtonFrameButtons()
 end
 
 local function EndSession()
+	if tieResolutionMode then
+		ExitTieResolutionMode()
+	end
+
 	if pityRollFrame then
 		pityRollFrame:Hide()
 		UpdateButtonFrameButtons()
@@ -274,6 +354,47 @@ local function DetectTie(results)
 	return nil
 end
 
+local function EnterTieResolutionMode(tiedPlayersList)
+	tieResolutionMode = true
+	tiedPlayers = tiedPlayersList
+	selectedWinner = nil
+
+	for _, squareData in ipairs(gridSquares) do
+		local playerName = squareData.clickFrame.playerName
+		local isTiedPlayer = false
+
+		for _, tiedName in ipairs(tiedPlayers) do
+			if tiedName == playerName then
+				isTiedPlayer = true
+				break
+			end
+		end
+
+		if isTiedPlayer then
+			squareData.clickFrame.tieIndicator:Show()
+		end
+	end
+
+	local tiedList = table.concat(tiedPlayers, ", ")
+	print("|cFFFFFF00TIE DETECTED:|r " .. tiedList)
+	print("|cFF00FF00PityRoll:|r Click on a tied player (highlighted in gold) to select winner, then click Award Item again")
+
+	UpdateButtonFrameButtons()
+end
+
+local function ExitTieResolutionMode()
+	for _, squareData in ipairs(gridSquares) do
+		squareData.clickFrame.tieIndicator:Hide()
+		squareData.clickFrame.selectionIndicator:Hide()
+	end
+
+	tieResolutionMode = false
+	tiedPlayers = nil
+	selectedWinner = nil
+
+	UpdateButtonFrameButtons()
+end
+
 local function FinishRollSession(specifiedWinner)
 	if not next(playerRolls) then
 		print("|cFF00FF00PityRoll:|r No rolls recorded. Closing window.")
@@ -300,33 +421,42 @@ local function FinishRollSession(specifiedWinner)
 
 	table.sort(results, function(a, b) return a.total > b.total end)
 
-	local tiedPlayers = DetectTie(results)
+	local tiedPlayersList = DetectTie(results)
 
-	if specifiedWinner then
-		if not tiedPlayers then
-			print("|cFFFF0000Error:|r Cannot specify a winner when there is no tie")
-			return
-		end
-
-		local winnerIsValid = false
-		for _, name in ipairs(tiedPlayers) do
-			if name:lower() == specifiedWinner:lower() then
-				winnerIsValid = true
-				specifiedWinner = name
-				break
+	if tiedPlayersList then
+		if specifiedWinner then
+			local winnerIsValid = false
+			for _, name in ipairs(tiedPlayersList) do
+				if name:lower() == specifiedWinner:lower() then
+					winnerIsValid = true
+					specifiedWinner = name
+					break
+				end
 			end
-		end
 
-		if not winnerIsValid then
-			local tiedList = table.concat(tiedPlayers, ", ")
-			print("|cFFFF0000Error:|r Specified winner '" .. specifiedWinner .. "' is not among tied players: " .. tiedList)
+			if not winnerIsValid then
+				local tiedList = table.concat(tiedPlayersList, ", ")
+				print("|cFFFF0000Error:|r Specified winner '" .. specifiedWinner .. "' is not among tied players: " .. tiedList)
+				return
+			end
+
+			if tieResolutionMode then
+				ExitTieResolutionMode()
+			end
+		elseif not tieResolutionMode then
+			EnterTieResolutionMode(tiedPlayersList)
 			return
+		elseif not selectedWinner then
+			print("|cFFFF0000Error:|r Please select a winner by clicking on a tied player (highlighted in gold)")
+			return
+		else
+			specifiedWinner = selectedWinner
+			ExitTieResolutionMode()
 		end
-	elseif tiedPlayers then
-		local tiedList = table.concat(tiedPlayers, ", ")
-		print("|cFFFF0000Error:|r There is a tie between: " .. tiedList)
-		print("|cFF00FF00PityRoll:|r Please use '/pr finish <PlayerName>' to specify the winner")
-		return
+	else
+		if tieResolutionMode then
+			ExitTieResolutionMode()
+		end
 	end
 
 	local message = "PityRoll Results: "
