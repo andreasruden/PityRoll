@@ -23,6 +23,10 @@ local SQUARE_HEIGHT = 35
 local SQUARE_SPACING = 2
 local GRID_MARGIN = 10
 
+-- "Forward Declarations"
+local CreateButtonFrame
+local HideButtonFrame
+
 local CLASS_COLORS = {
 	WARRIOR = {r = 0.78, g = 0.61, b = 0.43},
 	PALADIN = {r = 0.96, g = 0.55, b = 0.73},
@@ -38,6 +42,7 @@ local CLASS_COLORS = {
 local gridSquares = {}
 local playerRolls = {}
 local encounterRollers = {}
+local hasFinishedRollSession = false
 
 local function OnSquareClick(clickFrame)
 	local playerName = clickFrame.playerName
@@ -339,6 +344,8 @@ local function FinishRollSession(specifiedWinner)
 
 	PityRollDB[winner.name] = 0
 
+	hasFinishedRollSession = true
+
 	EndSession()
 end
 
@@ -436,14 +443,67 @@ local function SaveButtonFramePosition()
 	}
 end
 
-local function CreateButtonFrame()
+local function BossBeginSession()
+	if not IsInRaid() and not IsInGroup() then
+		print("|cFFFF0000Error:|r You must be in a party or raid to use /pr bossbegin")
+		return
+	end
+
+	hasFinishedRollSession = false
+	CreateButtonFrame()
+	UpdateButtonFrameButtons()
+	print("|cFF00FF00PityRoll:|r Boss encounter started. Button frame displayed.")
+end
+
+local function BossEndSession()
+	if not IsInRaid() and not IsInGroup() then
+		print("|cFFFF0000Error:|r You must be in a party or raid to use /pr bossend")
+		return
+	end
+
+	if hasFinishedRollSession then
+		local allMembers = GetAllGroupMembers()
+		local nonRollers = {}
+
+		for _, memberName in ipairs(allMembers) do
+			if not encounterRollers[memberName] then
+				table.insert(nonRollers, memberName)
+			end
+		end
+
+		for _, playerName in ipairs(nonRollers) do
+			local newPity = (PityRollDB[playerName] or 0) + 1
+			PityRollDB[playerName] = math.min(newPity, MAX_PITY)
+		end
+
+		if #nonRollers > 0 then
+			local names = table.concat(nonRollers, ", ")
+			print("|cFF00FF00PityRoll:|r Awarded +1 pity to " .. #nonRollers .. " non-rollers: " .. names)
+		else
+			print("|cFF00FF00PityRoll:|r All group members rolled - no pity awarded")
+		end
+	else
+		print("|cFF00FF00PityRoll:|r No items awarded during this encounter - no pity given")
+	end
+
+	encounterRollers = {}
+	playerRolls = {}
+
+	if pityRollFrame and pityRollFrame:IsShown() then
+		EndSession()
+	end
+
+	HideButtonFrame()
+end
+
+CreateButtonFrame = function()
 	if buttonFrame then
 		buttonFrame:Show()
 		return
 	end
 
 	buttonFrame = CreateFrame("Frame", "PityRollButtonFrame", UIParent)
-	buttonFrame:SetSize(200, 30)
+	buttonFrame:SetSize(300, 30)
 
 	if PityRollDB.buttonFramePosition then
 		local pos = PityRollDB.buttonFramePosition
@@ -465,19 +525,9 @@ local function CreateButtonFrame()
 		SaveButtonFramePosition()
 	end)
 
-	local finishButton = CreateFrame("Button", nil, buttonFrame, "UIPanelButtonTemplate")
-	finishButton:SetSize(90, 25)
-	finishButton:SetPoint("CENTER", buttonFrame, "CENTER", 55, 0)
-	finishButton:SetText("Award Item")
-	finishButton:SetScript("OnClick", function()
-		FinishRollSession(nil)
-	end)
-
-	buttonFrame.finishButton = finishButton
-
 	local newButton = CreateFrame("Button", nil, buttonFrame, "UIPanelButtonTemplate")
 	newButton:SetSize(90, 25)
-	newButton:SetPoint("CENTER", buttonFrame, "CENTER", -55, 0)
+	newButton:SetPoint("CENTER", buttonFrame, "CENTER", -100, 0)
 	newButton:SetText("New Item")
 	newButton:SetScript("OnClick", function()
 		NewRollSession()
@@ -485,62 +535,34 @@ local function CreateButtonFrame()
 
 	buttonFrame.newButton = newButton
 
+	local finishButton = CreateFrame("Button", nil, buttonFrame, "UIPanelButtonTemplate")
+	finishButton:SetSize(90, 25)
+	finishButton:SetPoint("CENTER", buttonFrame, "CENTER", 0, 0)
+	finishButton:SetText("Award Item")
+	finishButton:SetScript("OnClick", function()
+		FinishRollSession(nil)
+	end)
+
+	buttonFrame.finishButton = finishButton
+
+	local endBossButton = CreateFrame("Button", nil, buttonFrame, "UIPanelButtonTemplate")
+	endBossButton:SetSize(90, 25)
+	endBossButton:SetPoint("CENTER", buttonFrame, "CENTER", 100, 0)
+	endBossButton:SetText("End Boss")
+	endBossButton:SetScript("OnClick", function()
+		BossEndSession()
+	end)
+
+	buttonFrame.endBossButton = endBossButton
+
 	UpdateButtonFrameButtons()
 	buttonFrame:Show()
 end
 
-local function HideButtonFrame()
+HideButtonFrame = function()
 	if buttonFrame then
 		buttonFrame:Hide()
 	end
-end
-
-local function BossBeginSession()
-	if not IsInRaid() and not IsInGroup() then
-		print("|cFFFF0000Error:|r You must be in a party or raid to use /pr bossbegin")
-		return
-	end
-
-	CreateButtonFrame()
-	UpdateButtonFrameButtons()
-	print("|cFF00FF00PityRoll:|r Boss encounter started. Button frame displayed.")
-end
-
-local function BossEndSession()
-	if not IsInRaid() and not IsInGroup() then
-		print("|cFFFF0000Error:|r You must be in a party or raid to use /pr bossend")
-		return
-	end
-
-	local allMembers = GetAllGroupMembers()
-	local nonRollers = {}
-
-	for _, memberName in ipairs(allMembers) do
-		if not encounterRollers[memberName] then
-			table.insert(nonRollers, memberName)
-		end
-	end
-
-	for _, playerName in ipairs(nonRollers) do
-		local newPity = (PityRollDB[playerName] or 0) + 1
-		PityRollDB[playerName] = math.min(newPity, MAX_PITY)
-	end
-
-	if #nonRollers > 0 then
-		local names = table.concat(nonRollers, ", ")
-		print("|cFF00FF00PityRoll:|r Awarded +1 pity to " .. #nonRollers .. " non-rollers: " .. names)
-	else
-		print("|cFF00FF00PityRoll:|r All group members rolled - no pity awarded")
-	end
-
-	encounterRollers = {}
-	playerRolls = {}
-
-	if pityRollFrame and pityRollFrame:IsShown() then
-		EndSession()
-	end
-
-	HideButtonFrame()
 end
 
 local function ReportPityValues()
