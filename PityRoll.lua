@@ -614,7 +614,7 @@ local function CreatePityRollFrame()
     end
 
     pityRollFrame = CreateFrame("Frame", "PityRollFrame", UIParent)
-    pityRollFrame:SetSize(300, 200)
+    pityRollFrame:SetSize(430, 210)
 
     if PityRollDB.pityFramePosition then
         local pos = PityRollDB.pityFramePosition
