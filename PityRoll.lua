@@ -29,6 +29,37 @@ local HideButtonFrame
 local BossBeginSession
 local SavePityFramePosition
 local UpdateButtonFrameButtons
+local ReportPityValues
+
+-- LibUIDropDownMenu for context menu
+local LibDD = LibStub:GetLibrary("LibUIDropDownMenu-4.0")
+local minimapMenuFrame = LibDD:Create_UIDropDownMenu("PityRollMinimapMenuFrame", UIParent)
+
+local function GetMinimapMenuTable()
+	return {
+		{
+			text = "Help",
+			func = function()
+				print("|cFF00FF00PityRoll:|r Left-click to start boss encounter")
+				print("|cFF00FF00PityRoll:|r Use /pr report to show pity values")
+				print("|cFF00FF00PityRoll:|r Use /pr info <name> for player details")
+			end,
+			notCheckable = true,
+		},
+		{
+			text = "Pity Report",
+			func = function()
+				ReportPityValues()
+			end,
+			notCheckable = true,
+		},
+		{
+			text = "Cancel",
+			func = function() end,
+			notCheckable = true,
+		}
+	}
+end
 
 -- LibDataBroker minimap button
 local LDB = LibStub("LibDataBroker-1.1", true)
@@ -44,14 +75,15 @@ local icon = LDB and LDB:NewDataObject("PityRoll", {
 			end
 			BossBeginSession()
 		elseif button == "RightButton" then
-			print("|cFF00FF00PityRoll:|r TODO: Write some help here")
+			local menuTable = GetMinimapMenuTable()
+			LibDD:EasyMenu(menuTable, minimapMenuFrame, "cursor", 0, 0, "MENU", 2)
 		end
 	end,
 	OnTooltipShow = function(tooltip)
 		if not tooltip or not tooltip.AddLine then return end
 		tooltip:AddLine("PityRoll")
 		tooltip:AddLine("|cFFFFFFFFLeft-click:|r Start boss encounter")
-		tooltip:AddLine("|cFFFFFFFFRight-click:|r Show help")
+		tooltip:AddLine("|cFFFFFFFFRight-click:|r Show menu")
 		if buttonFrame and buttonFrame:IsShown() then
 			tooltip:AddLine("|cFF00FF00Boss encounter active|r")
 		end
@@ -750,7 +782,7 @@ HideButtonFrame = function()
 	end
 end
 
-local function ReportPityValues()
+ReportPityValues = function()
 	local allMembers = GetAllGroupMembers()
 
 	local pityList = {}
