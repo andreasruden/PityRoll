@@ -531,12 +531,12 @@ local function FinishRollSession(specifiedWinner)
 
 	for playerName, rollData in pairs(playerRolls) do
 		if playerName ~= winner.name and not rollData.ignored then
-			local newPity = (PityRollDB[playerName] or 0) + PITY_INCREMENT
-			PityRollDB[playerName] = math.min(newPity, MAX_PITY)
+			local newPity = (PityRollDB.players[playerName] or 0) + PITY_INCREMENT
+			PityRollDB.players[playerName] = math.min(newPity, MAX_PITY)
 		end
 	end
 
-	PityRollDB[winner.name] = 0
+	PityRollDB.players[winner.name] = 0
 
 	hasFinishedRollSession = true
 
@@ -545,10 +545,6 @@ end
 
 local function GetAllGroupMembers()
 	local members = {}
-	local playerName = UnitName("player")
-	if playerName then
-		table.insert(members, playerName)
-	end
 
 	if IsInRaid() then
 		for i = 1, GetNumGroupMembers() do
@@ -559,12 +555,22 @@ local function GetAllGroupMembers()
 			end
 		end
 	elseif IsInGroup() then
+		local playerName = UnitName("player")
+		if playerName then
+			table.insert(members, playerName)
+		end
+
 		for i = 1, GetNumSubgroupMembers() do
 			local name = UnitName("party" .. i)
 			if name then
 				name = name:match("([^-]+)") or name
 				table.insert(members, name)
 			end
+		end
+	else
+		local playerName = UnitName("player")
+		if playerName then
+			table.insert(members, playerName)
 		end
 	end
 
@@ -691,8 +697,8 @@ local function BossEndSession()
 		end
 
 		for _, playerName in ipairs(nonRollers) do
-			local newPity = (PityRollDB[playerName] or 0) + 1
-			PityRollDB[playerName] = math.min(newPity, MAX_PITY)
+			local newPity = (PityRollDB.players[playerName] or 0) + 1
+			PityRollDB.players[playerName] = math.min(newPity, MAX_PITY)
 		end
 
 		if #nonRollers > 0 then
@@ -794,7 +800,7 @@ ReportPityValues = function()
 
 	local pityList = {}
 	for _, memberName in ipairs(allMembers) do
-		local pityValue = PityRollDB[memberName] or 0
+		local pityValue = PityRollDB.players[memberName] or 0
 		table.insert(pityList, {name = memberName, pity = pityValue})
 	end
 
@@ -831,7 +837,7 @@ local function ShowPityInfo(characterName)
 
 	characterName = characterName:sub(1,1):upper() .. characterName:sub(2):lower()
 
-	local pityValue = PityRollDB[characterName]
+	local pityValue = PityRollDB.players[characterName]
 
 	if pityValue then
 		print(string.format("|cFF00FF00Pity Info:|r %s has %d pity points", characterName, pityValue))
@@ -859,16 +865,16 @@ local function AddPity(characterName, amount)
 
 	characterName = characterName:sub(1,1):upper() .. characterName:sub(2):lower()
 
-	if PityRollDB[characterName] == nil then
+	if PityRollDB.players[characterName] == nil then
 		print(string.format("|cFFFF0000Error:|r Character '%s' not found in pity database.", characterName))
 		return
 	end
 
-	local oldPity = PityRollDB[characterName]
+	local oldPity = PityRollDB.players[characterName]
 	local newPity = math.max(0, math.min(oldPity + pityAmount, MAX_PITY))
 	local actualChange = newPity - oldPity
 
-	PityRollDB[characterName] = newPity
+	PityRollDB.players[characterName] = newPity
 
 	local verb = actualChange >= 0 and "Added" or "Removed"
 	local sign = actualChange >= 0 and "+" or ""
@@ -993,7 +999,7 @@ local function HandleWhisperCommand(message, sender)
 
 	local normalizedName = sender:sub(1,1):upper() .. sender:sub(2):lower()
 
-	local pityValue = PityRollDB[normalizedName]
+	local pityValue = PityRollDB.players[normalizedName]
 
 	if pityValue then
 		SendChatMessage(normalizedName .. "'s current pity: " .. pityValue .. "/" .. MAX_PITY, "WHISPER", nil, sender)
@@ -1042,7 +1048,7 @@ local function HandleSystemMessage(message)
 	end
 
 	print("|cFF00FF00PityRoll DEBUG:|r Found class: " .. className .. " for " .. playerName)
-	rollBonus = PityRollDB[playerName] or 0
+	rollBonus = PityRollDB.players[playerName] or 0
 	AddSquareToGrid(className, playerName, rollValue, rollBonus)
 
 	playerRolls[playerName] = {
@@ -1061,6 +1067,7 @@ local function OnEvent(self, event, ...)
 
             if not PityRollDB.initialized then
                 PityRollDB.initialized = true
+				PityRollDB.players = {}
                 PityRollDB.version = "1.0.0"
                 PityRollDB.buttonFramePosition = {
                     point = "CENTER",
