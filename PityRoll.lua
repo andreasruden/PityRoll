@@ -339,7 +339,8 @@ UpdateButtonFrameButtons = function()
 	end
 
 	if pityRollFrame and pityRollFrame:IsShown() then
-		buttonFrame.newButton:Disable()
+		buttonFrame.newButton:SetText("Abort")
+		buttonFrame.newButton:Enable()
 
 		if tieResolutionMode and not selectedWinner then
 			buttonFrame.finishButton:Disable()
@@ -347,6 +348,7 @@ UpdateButtonFrameButtons = function()
 			buttonFrame.finishButton:Enable()
 		end
 	else
+		buttonFrame.newButton:SetText("New Item")
 		buttonFrame.newButton:Enable()
 		buttonFrame.finishButton:Disable()
 	end
@@ -747,7 +749,12 @@ CreateButtonFrame = function()
 	newButton:SetPoint("CENTER", buttonFrame, "CENTER", -100, 0)
 	newButton:SetText("New Item")
 	newButton:SetScript("OnClick", function()
-		NewRollSession()
+		if pityRollFrame and pityRollFrame:IsShown() then
+			EndSession()
+			print("|cFF00FF00PityRoll|r: Roll session aborted")
+		else
+			NewRollSession()
+		end
 	end)
 
 	buttonFrame.newButton = newButton
