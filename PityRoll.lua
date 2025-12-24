@@ -30,13 +30,14 @@ local BossBeginSession
 local SavePityFramePosition
 local UpdateButtonFrameButtons
 local ReportPityValues
+local EndBossNoPity
 
 -- LibUIDropDownMenu for context menu
 local LibDD = LibStub:GetLibrary("LibUIDropDownMenu-4.0")
 local minimapMenuFrame = LibDD:Create_UIDropDownMenu("PityRollMinimapMenuFrame", UIParent)
 
 local function GetMinimapMenuTable()
-	return {
+	local menuTable = {
 		{
 			text = "Help",
 			func = function()
@@ -53,12 +54,25 @@ local function GetMinimapMenuTable()
 			end,
 			notCheckable = true,
 		},
-		{
-			text = "Cancel",
-			func = function() end,
-			notCheckable = true,
-		}
 	}
+
+	if buttonFrame and buttonFrame:IsShown() then
+		table.insert(menuTable, {
+			text = "End Boss (no boss pity)",
+			func = function()
+				EndBossNoPity()
+			end,
+			notCheckable = true,
+		})
+	end
+
+	table.insert(menuTable, {
+		text = "Cancel",
+		func = function() end,
+		notCheckable = true,
+	})
+
+	return menuTable
 end
 
 -- LibDataBroker minimap button
@@ -686,30 +700,44 @@ local function BossEndSession()
 		return
 	end
 
-	if hasFinishedRollSession then
-		local allMembers = GetAllGroupMembers()
-		local nonRollers = {}
+	local allMembers = GetAllGroupMembers()
+	local nonRollers = {}
 
-		for _, memberName in ipairs(allMembers) do
-			if not encounterRollers[memberName] then
-				table.insert(nonRollers, memberName)
-			end
+	for _, memberName in ipairs(allMembers) do
+		if not encounterRollers[memberName] then
+			table.insert(nonRollers, memberName)
 		end
-
-		for _, playerName in ipairs(nonRollers) do
-			local newPity = (PityRollDB.players[playerName] or 0) + 1
-			PityRollDB.players[playerName] = math.min(newPity, MAX_PITY)
-		end
-
-		if #nonRollers > 0 then
-			local names = table.concat(nonRollers, ", ")
-			print("|cFF00FF00PityRoll:|r Awarded +1 pity to " .. #nonRollers .. " non-rollers: " .. names)
-		else
-			print("|cFF00FF00PityRoll:|r All group members rolled - no pity awarded")
-		end
-	else
-		print("|cFF00FF00PityRoll:|r No items awarded during this encounter - no pity given")
 	end
+
+	for _, playerName in ipairs(nonRollers) do
+		local newPity = (PityRollDB.players[playerName] or 0) + 1
+		PityRollDB.players[playerName] = math.min(newPity, MAX_PITY)
+	end
+
+	if #nonRollers > 0 then
+		local names = table.concat(nonRollers, ", ")
+		print("|cFF00FF00PityRoll:|r Awarded +1 pity to " .. #nonRollers .. " non-rollers: " .. names)
+	else
+		print("|cFF00FF00PityRoll:|r All group members rolled - no pity awarded")
+	end
+
+	encounterRollers = {}
+	playerRolls = {}
+
+	if pityRollFrame and pityRollFrame:IsShown() then
+		EndSession()
+	end
+
+	HideButtonFrame()
+end
+
+EndBossNoPity = function()
+	if not IsInRaid() and not IsInGroup() then
+		print("|cFFFF0000Error:|r You must be in a party or raid to end boss")
+		return
+	end
+
+	print("|cFF00FF00PityRoll:|r Ending boss without awarding pity")
 
 	encounterRollers = {}
 	playerRolls = {}
