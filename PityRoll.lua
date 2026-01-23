@@ -1191,6 +1191,35 @@ frame:RegisterEvent("CHAT_MSG_WHISPER")
 frame:RegisterEvent("CHAT_MSG_ADDON")
 frame:SetScript("OnEvent", OnEvent)
 
+-- Chat filter to modify roll messages with pity bonus
+ChatFrame_AddMessageEventFilter("CHAT_MSG_SYSTEM", function(self, event, message, ...)
+    -- Only process if pity frame visible or using follower mode
+    if not (pityRollFrame and pityRollFrame:IsShown()) and next(observedPity) == nil then
+        return false
+    end
+
+    local playerName, rollValue, minRoll, maxRoll = message:match("^(.+) rolls (%d+) %((%d+)%-(%d+)%)$")
+    if not playerName then
+        return false
+    end
+
+    if minRoll ~= "1" or maxRoll ~= "100" then
+        return false
+    end
+
+    -- Strip realm name for lookup
+    local cleanName = playerName:match("([^-]+)") or playerName
+
+    local pity = observedPity[cleanName] or (PityRollDB.players and PityRollDB.players[cleanName]) or 0
+    if pity == 0 then
+        return false
+    end
+
+    local total = tonumber(rollValue) + pity
+    local newMessage = string.format("%s rolls %d (%s+%d) (1-100)", playerName, total, rollValue, pity)
+    return false, newMessage, ...
+end)
+
 SLASH_PITYROLL1 = "/pityroll"
 SLASH_PITYROLL2 = "/pr"
 SlashCmdList["PITYROLL"] = function(msg)
