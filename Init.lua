@@ -2,6 +2,8 @@ local addonName, addon = ...
 local Constants = addon.Constants
 local State = addon.State
 
+PityRollDB = PityRollDB or {}
+
 -- LibUIDropDownMenu for context menu
 local LibDD = LibStub:GetLibrary("LibUIDropDownMenu-4.0")
 local minimapMenuFrame = LibDD:Create_UIDropDownMenu("PityRollMinimapMenuFrame", UIParent)
