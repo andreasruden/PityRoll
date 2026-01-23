@@ -49,7 +49,9 @@ addon.State = {
 		itemNames = {},
 		startTime = nil,
 		isActive = false
-	}
+	},
+	currentRollItemLink = nil,
+	currentRollItemName = nil
 }
 
 -- Frames

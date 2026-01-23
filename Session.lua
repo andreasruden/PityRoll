@@ -173,6 +173,19 @@ function addon.FinishRollSession(specifiedWinner)
 	end
 	addon.WriteToChat("WINNER: " .. winner.name .. " (" .. winner.total .. ")")
 
+	if State.currentRollItemLink then
+		for i = #State.currentBossSession.lootItems, 1, -1 do
+			if State.currentBossSession.lootItems[i] == State.currentRollItemLink then
+				table.remove(State.currentBossSession.lootItems, i)
+				table.remove(State.currentBossSession.itemNames, i)
+				break
+			end
+		end
+		print("|cFF00FF00PityRoll:|r " .. State.currentRollItemName .. " awarded to " .. winner.name)
+		State.currentRollItemLink = nil
+		State.currentRollItemName = nil
+	end
+
 	for playerName, rollData in pairs(State.playerRolls) do
 		if not rollData.ignored then
 			State.encounterRollers[playerName] = true
@@ -194,6 +207,22 @@ function addon.FinishRollSession(specifiedWinner)
 end
 
 function addon.NewRollSession()
+	if not State.currentBossSession.isActive then
+		print("|cFFFF0000Error:|r No active boss session. Use /pr bossbegin first.")
+		return
+	end
+
+	if #State.currentBossSession.lootItems == 0 then
+		print("|cFFFF0000Error:|r No items available. All items have been awarded or use /pr bossend to finish.")
+		return
+	end
+
+	addon.ShowItemSelectionDialog()
+end
+
+function addon.StartRollSessionWithItem(itemLink, itemName)
+	State.currentRollItemLink = itemLink
+	State.currentRollItemName = itemName
 	addon.CreatePityRollFrame()
 	addon.UpdateButtonFrameButtons()
 	addon.BroadcastPityData()
@@ -295,6 +324,8 @@ function addon.BossEndSession()
 		print("|cFF00FF00PityRoll:|r All group members rolled - no pity awarded")
 	end
 
+	State.currentRollItemLink = nil
+	State.currentRollItemName = nil
 	State.encounterRollers = {}
 	State.playerRolls = {}
 	State.currentBossSession = {
@@ -321,6 +352,8 @@ function addon.EndBossNoPity()
 
 	print("|cFF00FF00PityRoll:|r Ending boss without awarding pity")
 
+	State.currentRollItemLink = nil
+	State.currentRollItemName = nil
 	State.encounterRollers = {}
 	State.playerRolls = {}
 	State.currentBossSession = {

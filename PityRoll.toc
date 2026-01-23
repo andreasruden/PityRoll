@@ -16,4 +16,5 @@ Data.lua
 Grid.lua
 Session.lua
 UI.lua
+ItemSelection.lua
 Init.lua
