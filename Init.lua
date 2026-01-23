@@ -50,7 +50,7 @@ local LDB = LibStub("LibDataBroker-1.1", true)
 local icon = LDB and LDB:NewDataObject("PityRoll", {
 	type = "launcher",
 	text = "PityRoll",
-	icon = "Interface\\Icons\\INV_Misc_Dice_01",
+	icon = "Interface\\Buttons\\UI-GroupLoot-Dice-Up",
 	OnClick = function(self, button)
 		if button == "LeftButton" then
 			if addon.Frames.buttonFrame and addon.Frames.buttonFrame:IsShown() then
