@@ -41,7 +41,15 @@ addon.State = {
 	tiedPlayers = nil,
 	selectedWinner = nil,
 	observedPity = {},
-	whisperTimestamps = {}
+	whisperTimestamps = {},
+	currentBossSession = {
+		bossName = nil,
+		bossGuid = nil,
+		lootItems = {},
+		itemNames = {},
+		startTime = nil,
+		isActive = false
+	}
 }
 
 -- Frames

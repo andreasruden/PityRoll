@@ -199,16 +199,73 @@ function addon.NewRollSession()
 	addon.BroadcastPityData()
 end
 
+function addon.CaptureBossLootData()
+	if not UnitExists("target") then
+		return false, "You must target a mob to start a boss session"
+	end
+
+	local numLootItems = GetNumLootItems()
+	if numLootItems == 0 then
+		return false, "You must open the loot window first (right-click the boss corpse)"
+	end
+
+	local bossName = UnitName("target")
+	if not bossName then
+		return false, "Unable to read target name"
+	end
+
+	bossName = bossName:match("([^-]+)") or bossName
+	local bossGuid = UnitGUID("target")
+
+	State.currentBossSession.bossName = bossName
+	State.currentBossSession.bossGuid = bossGuid
+	State.currentBossSession.lootItems = {}
+	State.currentBossSession.itemNames = {}
+	State.currentBossSession.startTime = time()
+	State.currentBossSession.isActive = true
+
+	for slot = 1, numLootItems do
+		local itemLink = GetLootSlotLink(slot)
+		local slotType = GetLootSlotType(slot)
+
+		if itemLink and slotType == LOOT_SLOT_ITEM then
+			table.insert(State.currentBossSession.lootItems, itemLink)
+			local itemName = GetItemInfo(itemLink)
+			if itemName then
+				table.insert(State.currentBossSession.itemNames, itemName)
+			end
+		end
+	end
+
+	return true, nil
+end
+
 function addon.BossBeginSession()
 	if not IsInRaid() and not IsInGroup() then
 		print("|cFFFF0000Error:|r You must be in a party or raid to use /pr bossbegin")
 		return
 	end
 
+	local success, errorMsg = addon.CaptureBossLootData()
+	if not success then
+		print("|cFFFF0000Error:|r " .. errorMsg)
+		return
+	end
+
 	State.hasFinishedRollSession = false
 	addon.CreateButtonFrame()
 	addon.UpdateButtonFrameButtons()
-	print("|cFF00FF00PityRoll:|r Boss encounter started. Button frame displayed.")
+
+	local itemCount = #State.currentBossSession.lootItems
+	local bossName = State.currentBossSession.bossName
+	print("|cFF00FF00PityRoll:|r Boss encounter started for " .. bossName .. " (" .. itemCount .. " items)")
+
+	if itemCount > 0 then
+		print("|cFF00FF00PityRoll:|r Dropped items:")
+		for i, itemName in ipairs(State.currentBossSession.itemNames) do
+			print("  " .. i .. ". " .. itemName)
+		end
+	end
 end
 
 function addon.BossEndSession()
@@ -240,6 +297,14 @@ function addon.BossEndSession()
 
 	State.encounterRollers = {}
 	State.playerRolls = {}
+	State.currentBossSession = {
+		bossName = nil,
+		bossGuid = nil,
+		lootItems = {},
+		itemNames = {},
+		startTime = nil,
+		isActive = false
+	}
 
 	if addon.Frames.pityRollFrame and addon.Frames.pityRollFrame:IsShown() then
 		addon.EndSession()
@@ -258,6 +323,14 @@ function addon.EndBossNoPity()
 
 	State.encounterRollers = {}
 	State.playerRolls = {}
+	State.currentBossSession = {
+		bossName = nil,
+		bossGuid = nil,
+		lootItems = {},
+		itemNames = {},
+		startTime = nil,
+		isActive = false
+	}
 
 	if addon.Frames.pityRollFrame and addon.Frames.pityRollFrame:IsShown() then
 		addon.EndSession()
