@@ -10,6 +10,10 @@ local buttonFrame = nil
 local MAX_PITY = 50
 local PITY_INCREMENT = 5
 
+-- Addon communication
+local ADDON_PREFIX = "PityRoll"
+local observedPity = {}
+
 -- Rate limiting configuration
 local MAX_WHISPERS_PER_WINDOW = 5
 local RATE_LIMIT_WINDOW = 30
@@ -35,6 +39,30 @@ local EndBossNoPity
 -- LibUIDropDownMenu for context menu
 local LibDD = LibStub:GetLibrary("LibUIDropDownMenu-4.0")
 local minimapMenuFrame = LibDD:Create_UIDropDownMenu("PityRollMinimapMenuFrame", UIParent)
+
+local function GetGroupChannel()
+	if IsInRaid() then
+		return "RAID"
+	elseif IsInGroup() then
+		return "PARTY"
+	end
+	return nil
+end
+
+local function BroadcastPityData()
+	local channel = GetGroupChannel()
+	if not channel then return end
+
+	for playerName, pityValue in pairs(PityRollDB.players) do
+		C_ChatInfo.SendAddonMessage(ADDON_PREFIX, "PITY:" .. playerName .. ":" .. pityValue, channel)
+	end
+end
+
+local function BroadcastClear()
+	local channel = GetGroupChannel()
+	if not channel then return end
+	C_ChatInfo.SendAddonMessage(ADDON_PREFIX, "CLEAR", channel)
+end
 
 local function GetMinimapMenuTable()
 	local menuTable = {
@@ -373,6 +401,8 @@ local function EndSession()
 		ExitTieResolutionMode()
 	end
 
+	BroadcastClear()
+
 	if pityRollFrame then
 		pityRollFrame:Hide()
 		UpdateButtonFrameButtons()
@@ -648,6 +678,7 @@ end
 local function NewRollSession()
 	CreatePityRollFrame()
 	UpdateButtonFrameButtons()
+	BroadcastPityData()
 end
 
 local function SaveButtonFramePosition()
@@ -1117,6 +1148,8 @@ local function OnEvent(self, event, ...)
                 print("|cFF00FF00PityRoll|r: First time setup complete")
             end
 
+            C_ChatInfo.RegisterAddonMessagePrefix(ADDON_PREFIX)
+
             -- Register minimap button with saved position
             local LibDBIcon = LibStub("LibDBIcon-1.0", true)
             if LibDBIcon and icon then
@@ -1137,12 +1170,25 @@ local function OnEvent(self, event, ...)
     elseif event == "CHAT_MSG_WHISPER" then
         local message, sender = ...
         HandleWhisperCommand(message, sender)
+    elseif event == "CHAT_MSG_ADDON" then
+        local prefix, message, channel, sender = ...
+        if prefix == ADDON_PREFIX then
+            if message == "CLEAR" then
+                observedPity = {}
+            elseif message:sub(1, 5) == "PITY:" then
+                local name, value = message:match("^PITY:(.+):(%d+)$")
+                if name and value then
+                    observedPity[name] = tonumber(value)
+                end
+            end
+        end
     end
 end
 
 frame:RegisterEvent("ADDON_LOADED")
 frame:RegisterEvent("PLAYER_LOGIN")
 frame:RegisterEvent("CHAT_MSG_WHISPER")
+frame:RegisterEvent("CHAT_MSG_ADDON")
 frame:SetScript("OnEvent", OnEvent)
 
 SLASH_PITYROLL1 = "/pityroll"
