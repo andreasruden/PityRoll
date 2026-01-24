@@ -123,6 +123,26 @@ function addon.ClearHistory()
     print("|cFFFF0000WARNING:|r Type '/pr history clear confirm' to proceed")
 end
 
+function addon.ShowClearHistoryConfirmation()
+    local numEncounters = PityRollHistoryDB and #PityRollHistoryDB.encounters or 0
+
+    StaticPopupDialogs["PITYROLL_CLEAR_HISTORY"] = {
+        text = string.format("Are you sure you want to clear all history?\n\nThis will delete %d encounter(s) and cannot be undone.", numEncounters),
+        button1 = "Yes, Clear All",
+        button2 = "Cancel",
+        OnAccept = function()
+            PityRollHistoryDB.encounters = {}
+            PityRollHistoryDB.pityChanges = {}
+            print("|cFF00FF00PityRoll:|r History cleared")
+        end,
+        timeout = 0,
+        whileDead = true,
+        hideOnEscape = true,
+        preferredIndex = 3,
+    }
+    StaticPopup_Show("PITYROLL_CLEAR_HISTORY")
+end
+
 function addon.GetHistoryStats()
     if not PityRollHistoryDB then
         return 0, 0

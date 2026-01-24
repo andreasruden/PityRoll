@@ -74,6 +74,17 @@ local function GetMinimapMenuTable()
 		notCheckable = true,
 	})
 
+	if PityRollHistoryDB and #PityRollHistoryDB.encounters > 0 then
+		local numEncounters = #PityRollHistoryDB.encounters
+		table.insert(menuTable, {
+			text = string.format("Clear History (%d entries)", numEncounters),
+			func = function()
+				addon.ShowClearHistoryConfirmation()
+			end,
+			notCheckable = true,
+		})
+	end
+
 	table.insert(menuTable, {
 		text = "Cancel",
 		func = function() end,
