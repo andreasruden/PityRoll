@@ -137,3 +137,52 @@ function addon.GetHistoryStats()
 
     return encounterCount, itemCount
 end
+
+function addon.RecordPityChange(playerName, oldPity, newPity)
+    if not PityRollHistoryDB.pityChanges then
+        PityRollHistoryDB.pityChanges = {}
+    end
+
+    if oldPity == newPity then
+        return
+    end
+
+    if not PityRollHistoryDB.pityChanges[playerName] then
+        PityRollHistoryDB.pityChanges[playerName] = {
+            old = oldPity,
+            new = newPity
+        }
+    else
+        PityRollHistoryDB.pityChanges[playerName].new = newPity
+    end
+end
+
+function addon.SerializeHistory(limit)
+    if not PityRollHistoryDB or #PityRollHistoryDB.encounters == 0 then
+        return "No history recorded\n"
+    end
+
+    local lines = {}
+    local count = 0
+    local maxCount = limit or #PityRollHistoryDB.encounters
+
+    for i = #PityRollHistoryDB.encounters, 1, -1 do
+        if count >= maxCount then
+            break
+        end
+
+        local encounter = PityRollHistoryDB.encounters[i]
+        local dateStr = FormatTimestamp(encounter.timestamp)
+        table.insert(lines, string.format("**%s (%s):**", encounter.bossName, dateStr))
+
+        for _, item in ipairs(encounter.items) do
+            local losersList = FormatLosersList(item.losers)
+            table.insert(lines, string.format("- %s: %s (%s)", item.itemName, item.winner, losersList))
+        end
+
+        table.insert(lines, "")
+        count = count + 1
+    end
+
+    return table.concat(lines, "\n")
+end

@@ -332,6 +332,7 @@ function addon.HandleForceUpdate(message, sender)
 
     if PityRollHistoryDB then
         PityRollHistoryDB.encounters = {}
+        PityRollHistoryDB.pityChanges = {}
     end
 
     local newCount = 0
@@ -357,4 +358,104 @@ function addon.HandleSyncMessage(message, channel, sender)
     elseif message:sub(1, 18) == "SYNC_FORCE_UPDATE:" then
         addon.HandleForceUpdate(message, sender)
     end
+end
+
+-- Helper to count table entries
+function addon.TableSize(tbl)
+    local count = 0
+    for _ in pairs(tbl) do count = count + 1 end
+    return count
+end
+
+-- Serialize pity changes for export
+function addon.SerializePityChanges()
+    if not PityRollHistoryDB.pityChanges then
+        return ""
+    end
+
+    local parts = {}
+    for playerName, changes in pairs(PityRollHistoryDB.pityChanges) do
+        table.insert(parts, string.format("%s:%d:%d", playerName, changes.old, changes.new))
+    end
+
+    table.sort(parts)
+
+    return table.concat(parts, ",")
+end
+
+-- Base64 encoding function
+function addon.Base64Encode(data)
+    local b = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+    return ((data:gsub('.', function(x)
+        local r,b='',x:byte()
+        for i=8,1,-1 do r=r..(b%2^i-b%2^(i-1)>0 and '1' or '0') end
+        return r;
+    end)..'0000'):gsub('%d%d%d?%d?%d?%d?', function(x)
+        if (#x < 6) then return '' end
+        local c=0
+        for i=1,6 do c=c+(x:sub(i,i)=='1' and 2^(6-i) or 0) end
+        return b:sub(c+1,c+1)
+    end)..({ '', '==', '=' })[#data%3+1])
+end
+
+-- Show copy dialog with text pre-selected
+local function ShowCopyDialog(text, title)
+    local frame = CreateFrame("Frame", "PityRollCopyFrame", UIParent, "BasicFrameTemplateWithInset")
+    frame:SetSize(500, 150)
+    frame:SetPoint("CENTER")
+    frame:SetMovable(true)
+    frame:EnableMouse(true)
+    frame:RegisterForDrag("LeftButton")
+    frame:SetScript("OnDragStart", frame.StartMoving)
+    frame:SetScript("OnDragStop", frame.StopMovingOrSizing)
+    frame:SetFrameStrata("DIALOG")
+
+    frame.title = frame:CreateFontString(nil, "OVERLAY")
+    frame.title:SetFontObject("GameFontHighlight")
+    frame.title:SetPoint("TOP", frame.TitleBg, 0, -5)
+    frame.title:SetText(title or "Copy Text")
+
+    local scrollFrame = CreateFrame("ScrollFrame", nil, frame, "UIPanelScrollFrameTemplate")
+    scrollFrame:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, -30)
+    scrollFrame:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -30, 10)
+
+    local editBox = CreateFrame("EditBox", nil, scrollFrame)
+    editBox:SetMultiLine(true)
+    editBox:SetSize(460, 100)
+    editBox:SetFontObject("ChatFontNormal")
+    editBox:SetAutoFocus(true)
+    editBox:SetText(text)
+    editBox:HighlightText()
+    editBox:SetScript("OnEscapePressed", function()
+        frame:Hide()
+    end)
+    editBox:SetScript("OnEditFocusGained", function(self)
+        self:HighlightText()
+    end)
+
+    scrollFrame:SetScrollChild(editBox)
+
+    frame:Show()
+end
+
+-- Export pity changes with base64 encoding
+function addon.ExportPityChanges()
+    local historyText = addon.SerializeHistory()
+    local serialized = addon.SerializePityChanges()
+
+    local exportText = historyText
+
+    if serialized ~= "" then
+        local encoded = addon.Base64Encode(serialized)
+        exportText = exportText .. "\n" .. encoded
+    end
+
+    local playerCount = addon.TableSize(PityRollHistoryDB.pityChanges)
+    local encounterCount = PityRollHistoryDB and #PityRollHistoryDB.encounters or 0
+
+    local title = string.format("Export History (%d encounters, %d players)", encounterCount, playerCount)
+    ShowCopyDialog(exportText, title)
+    print("[PityRoll] Exported " .. encounterCount .. " encounters and " .. playerCount .. " pity changes")
+
+    return exportText
 end

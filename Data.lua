@@ -97,6 +97,7 @@ function addon.AddPity(characterName, amount)
 	local actualChange = newPity - oldPity
 
 	PityRollDB.players[characterName] = newPity
+	addon.RecordPityChange(characterName, oldPity, newPity)
 
 	local verb = actualChange >= 0 and "Added" or "Removed"
 	local sign = actualChange >= 0 and "+" or ""

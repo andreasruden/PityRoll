@@ -59,6 +59,14 @@ local function GetMinimapMenuTable()
 	end
 
 	table.insert(menuTable, {
+		text = "Export History",
+		func = function()
+			addon.ExportPityChanges()
+		end,
+		notCheckable = true,
+	})
+
+	table.insert(menuTable, {
 		text = "Cancel",
 		func = function() end,
 		notCheckable = true,
@@ -219,7 +227,8 @@ local function OnEvent(self, event, ...)
 				PityRollHistoryDB = {
 					initialized = true,
 					version = "1.0.0",
-					encounters = {}
+					encounters = {},
+					pityChanges = {}
 				}
 				print("|cFF00FF00PityRoll History:|r First time setup complete")
 			end
@@ -228,6 +237,11 @@ local function OnEvent(self, event, ...)
 			if PityRollHistoryDB and not PityRollHistoryDB.version then
 				PityRollHistoryDB.version = "1.0.0"
 				PityRollHistoryDB.encounters = PityRollHistoryDB.encounters or {}
+			end
+
+			-- Migration for pityChanges
+			if PityRollHistoryDB and not PityRollHistoryDB.pityChanges then
+				PityRollHistoryDB.pityChanges = {}
 			end
 
 			C_ChatInfo.RegisterAddonMessagePrefix(Constants.ADDON_PREFIX)
@@ -407,6 +421,8 @@ SlashCmdList["PITYROLL"] = function(msg)
 		addon.SetSyncSource(sourceName)
 	elseif lowerMsg == "clearsource" then
 		addon.ClearSyncSource()
+	elseif lowerMsg:match("^export") then
+		addon.ExportPityChanges()
 	else
 		print("|cFF00FF00PityRoll|r: Unknown command. Type /pityroll help for commands")
 	end
