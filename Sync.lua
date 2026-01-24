@@ -330,6 +330,10 @@ function addon.HandleForceUpdate(message, sender)
     PityRollDB.players = {}
     PityRollDB.players = newDatabase
 
+    if PityRollHistoryDB then
+        PityRollHistoryDB.encounters = {}
+    end
+
     local newCount = 0
     for _ in pairs(PityRollDB.players) do
         newCount = newCount + 1
@@ -341,6 +345,7 @@ function addon.HandleForceUpdate(message, sender)
     print("[PityRoll Sync] Old database: " .. oldCount .. " players")
     print("[PityRoll Sync] New database: " .. newCount .. " players")
     print("[PityRoll Sync] New hash: " .. newHash)
+    print("[PityRoll Sync] History cleared")
 end
 
 -- Handle all sync messages (router function)
