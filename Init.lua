@@ -193,6 +193,22 @@ local function OnEvent(self, event, ...)
 				print("|cFF00FF00PityRoll|r: First time setup complete")
 			end
 
+			-- Initialize History DB
+			if not PityRollHistoryDB then
+				PityRollHistoryDB = {
+					initialized = true,
+					version = "1.0.0",
+					encounters = {}
+				}
+				print("|cFF00FF00PityRoll History:|r First time setup complete")
+			end
+
+			-- Migration for existing users
+			if PityRollHistoryDB and not PityRollHistoryDB.version then
+				PityRollHistoryDB.version = "1.0.0"
+				PityRollHistoryDB.encounters = PityRollHistoryDB.encounters or {}
+			end
+
 			C_ChatInfo.RegisterAddonMessagePrefix(Constants.ADDON_PREFIX)
 
 			-- Register minimap button with saved position
@@ -340,6 +356,26 @@ SlashCmdList["PITYROLL"] = function(msg)
 			print("|cFFFF0000Error:|r Usage: /pr setroll <name> <value>")
 		else
 			addon.SetRoll(args[2], args[3])
+		end
+	elseif lowerMsg:match("^history") then
+		local subCommand = msg:match("^history%s+(.+)")
+
+		if not subCommand or subCommand == "" then
+			addon.DumpHistory(10)
+		elseif subCommand:match("^%d+$") then
+			addon.DumpHistory(tonumber(subCommand))
+		elseif subCommand == "all" then
+			addon.DumpHistory(nil)
+		elseif subCommand == "clear confirm" then
+			PityRollHistoryDB.encounters = {}
+			print("|cFF00FF00PityRoll:|r History cleared")
+		elseif subCommand == "clear" then
+			addon.ClearHistory()
+		elseif subCommand == "stats" then
+			local encounters, items = addon.GetHistoryStats()
+			print(string.format("|cFF00FF00PityRoll History:|r %d encounters, %d items awarded", encounters, items))
+		else
+			print("|cFFFF0000Error:|r Unknown history command")
 		end
 	else
 		print("|cFF00FF00PityRoll|r: Unknown command. Type /pityroll help for commands")

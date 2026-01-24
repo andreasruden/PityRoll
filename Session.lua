@@ -182,6 +182,16 @@ function addon.FinishRollSession(specifiedWinner)
 			end
 		end
 		print("|cFF00FF00PityRoll:|r " .. State.currentRollItemName .. " awarded to " .. winner.name)
+
+		-- Record history entry
+		addon.RecordHistoryEntry(
+			State.currentBossSession.bossName,
+			State.currentRollItemLink,
+			State.currentRollItemName,
+			winner,
+			results
+		)
+
 		State.currentRollItemLink = nil
 		State.currentRollItemName = nil
 	end
