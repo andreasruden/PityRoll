@@ -35,6 +35,19 @@ local function GetMinimapMenuTable()
 		},
 	}
 
+	local syncState = addon.GetSyncState()
+	if syncState and syncState.outOfSyncFollowers and #syncState.outOfSyncFollowers > 0 then
+		for _, followerName in ipairs(syncState.outOfSyncFollowers) do
+			table.insert(menuTable, {
+				text = "Force Update " .. followerName,
+				func = function()
+					addon.ShowForceUpdateConfirmation(followerName)
+				end,
+				notCheckable = true,
+			})
+		end
+	end
+
 	if addon.Frames.buttonFrame and addon.Frames.buttonFrame:IsShown() then
 		table.insert(menuTable, {
 			text = "End Boss (no boss pity)",

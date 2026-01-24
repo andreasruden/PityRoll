@@ -5,8 +5,14 @@ local syncState = {
     queryResponses = {},
     queryInProgress = false,
     queryStartTime = nil,
-    leaderHash = nil
+    leaderHash = nil,
+    outOfSyncFollowers = {}
 }
+
+-- Expose sync state for context menu
+addon.GetSyncState = function()
+    return syncState
+end
 
 -- CRC32 implementation using WoW bit library
 local function ComputeCRC32(str)
@@ -51,6 +57,44 @@ function addon.ComputePityTableHash()
 
     local serialized = table.concat(parts, "|")
     return ComputeCRC32(serialized)
+end
+
+-- Serialize pity database for force update
+function addon.SerializePityDatabase()
+    if not PityRollDB or not PityRollDB.players then
+        return ""
+    end
+
+    local names = {}
+    for name, _ in pairs(PityRollDB.players) do
+        table.insert(names, name)
+    end
+    table.sort(names)
+
+    local parts = {}
+    for _, name in ipairs(names) do
+        table.insert(parts, name .. ":" .. PityRollDB.players[name])
+    end
+
+    return table.concat(parts, ",")
+end
+
+-- Deserialize pity database from force update
+function addon.DeserializePityDatabase(serialized)
+    local database = {}
+
+    if not serialized or serialized == "" then
+        return database
+    end
+
+    for entry in serialized:gmatch("[^,]+") do
+        local name, pity = entry:match("^(.+):(%d+)$")
+        if name and pity then
+            database[name] = tonumber(pity)
+        end
+    end
+
+    return database
 end
 
 -- Set sync source (leader to follow)
@@ -105,6 +149,7 @@ function addon.QueryFollowerState()
 
     -- Initialize query state
     syncState.queryResponses = {}
+    syncState.outOfSyncFollowers = {}
     syncState.queryInProgress = true
     syncState.queryStartTime = GetTime()
     syncState.leaderHash = hash
@@ -202,6 +247,13 @@ function addon.DisplayQueryResults()
         end
     end
 
+    -- Store out-of-sync followers for context menu
+    syncState.outOfSyncFollowers = {}
+    for _, follower in ipairs(outOfSync) do
+        table.insert(syncState.outOfSyncFollowers, follower.name)
+    end
+    table.sort(syncState.outOfSyncFollowers)
+
     -- Display results
     print("[PityRoll Sync] Follower Status Report:")
 
@@ -219,11 +271,85 @@ function addon.DisplayQueryResults()
     print("[PityRoll Sync] " .. #synced .. " in sync, " .. #outOfSync .. " out of sync")
 end
 
+-- Show force update confirmation dialog
+function addon.ShowForceUpdateConfirmation(followerName)
+    StaticPopupDialogs["PITYROLL_FORCE_UPDATE"] = {
+        text = "Are you sure you want to force update " .. followerName .. "?",
+        button1 = "Yes",
+        button2 = "No",
+        OnAccept = function()
+            addon.SendForceUpdate(followerName)
+        end,
+        timeout = 0,
+        whileDead = true,
+        hideOnEscape = true,
+        preferredIndex = 3,
+    }
+    StaticPopup_Show("PITYROLL_FORCE_UPDATE")
+end
+
+-- Send force update to follower
+function addon.SendForceUpdate(followerName)
+    local serialized = addon.SerializePityDatabase()
+    local message = "SYNC_FORCE_UPDATE:" .. serialized
+
+    if #message > 255 then
+        print("[PityRoll Sync] Error: Database too large to send (size: " .. #message .. " bytes, limit: 255)")
+        print("[PityRoll Sync] Consider reducing the number of players in your database")
+        return
+    end
+
+    ChatThrottleLib:SendAddonMessage("NORMAL", "PityRoll", message, "WHISPER", followerName)
+    print("[PityRoll Sync] Force update sent to " .. followerName)
+end
+
+-- Handle force update from leader
+function addon.HandleForceUpdate(message, sender)
+    sender = sender:match("([^-]+)") or sender
+
+    if not PityRollDB.syncSource or PityRollDB.syncSource ~= sender then
+        print("[PityRoll Sync] Rejected force update from " .. sender .. " (not your sync source)")
+        return
+    end
+
+    local serialized = message:match("^SYNC_FORCE_UPDATE:(.*)$")
+    if not serialized then
+        print("[PityRoll Sync] Error: Invalid force update message")
+        return
+    end
+
+    local oldCount = 0
+    if PityRollDB.players then
+        for _ in pairs(PityRollDB.players) do
+            oldCount = oldCount + 1
+        end
+    end
+
+    local newDatabase = addon.DeserializePityDatabase(serialized)
+
+    PityRollDB.players = {}
+    PityRollDB.players = newDatabase
+
+    local newCount = 0
+    for _ in pairs(PityRollDB.players) do
+        newCount = newCount + 1
+    end
+
+    local newHash = addon.ComputePityTableHash()
+
+    print("[PityRoll Sync] Force update received from " .. sender)
+    print("[PityRoll Sync] Old database: " .. oldCount .. " players")
+    print("[PityRoll Sync] New database: " .. newCount .. " players")
+    print("[PityRoll Sync] New hash: " .. newHash)
+end
+
 -- Handle all sync messages (router function)
 function addon.HandleSyncMessage(message, channel, sender)
     if message:sub(1, 11) == "SYNC_QUERY:" then
         addon.HandleSyncQuery(message, sender)
     elseif message:sub(1, 14) == "SYNC_RESPONSE:" then
         addon.HandleSyncResponse(message, sender)
+    elseif message:sub(1, 18) == "SYNC_FORCE_UPDATE:" then
+        addon.HandleForceUpdate(message, sender)
     end
 end
