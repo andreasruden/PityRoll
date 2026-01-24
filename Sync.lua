@@ -398,6 +398,331 @@ function addon.Base64Encode(data)
     end)..({ '', '==', '=' })[#data%3+1])
 end
 
+-- Base64 decoding function
+function addon.Base64Decode(data)
+    local b = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+    data = string.gsub(data, '[^'..b..'=]', '')
+    return (data:gsub('.', function(x)
+        if x == '=' then return '' end
+        local r,f='',(b:find(x)-1)
+        for i=6,1,-1 do r=r..(f%2^i-f%2^(i-1)>0 and '1' or '0') end
+        return r;
+    end):gsub('%d%d%d?%d?%d?%d?%d?%d?', function(x)
+        if #x ~= 8 then return '' end
+        local c=0
+        for i=1,8 do c=c+(x:sub(i,i)=='1' and 2^(8-i) or 0) end
+        return string.char(c)
+    end))
+end
+
+-- Parse imported data and extract pity changes
+function addon.ParseImportedData(text)
+    if not text or text:trim() == "" then
+        return {success = false, error = "Import text is empty"}
+    end
+
+    local lines = {}
+    for line in text:gmatch("[^\r\n]+") do
+        if line:trim() ~= "" then
+            table.insert(lines, line)
+        end
+    end
+
+    if #lines == 0 then
+        return {success = false, error = "Import text is empty"}
+    end
+
+    local encodedLine = lines[#lines]
+
+    local decoded = addon.Base64Decode(encodedLine)
+    if not decoded or decoded == "" then
+        return {success = false, error = "Invalid Base64 encoding"}
+    end
+
+    if not decoded:match("^#PrS#") then
+        return {success = false, error = "Missing start marker (incomplete copy)"}
+    end
+
+    if not decoded:match("#PrE#$") then
+        return {success = false, error = "Missing end marker (incomplete copy)"}
+    end
+
+    local data = decoded:match("^#PrS#(.*)#PrE#$")
+    if not data then
+        return {success = false, error = "Failed to extract data between markers"}
+    end
+
+    local pityChanges = {}
+    for entry in data:gmatch("[^,]+") do
+        local playerName, oldPity, newPity = entry:match("^(.+):(%d+):(%d+)$")
+        if not playerName or not oldPity or not newPity then
+            return {success = false, error = "Invalid pity change format: " .. entry}
+        end
+
+        pityChanges[playerName] = {
+            old = tonumber(oldPity),
+            new = tonumber(newPity)
+        }
+    end
+
+    return {success = true, pityChanges = pityChanges}
+end
+
+-- Detect conflicts between imported pity changes and current database
+function addon.DetectImportConflicts(pityChanges)
+    local conflicts = {}
+    local missingPlayers = {}
+    local validChanges = {}
+
+    for playerName, changes in pairs(pityChanges) do
+        local currentPity = PityRollDB.players[playerName]
+
+        if not currentPity then
+            table.insert(missingPlayers, playerName)
+        elseif currentPity ~= changes.old then
+            table.insert(conflicts, {
+                playerName = playerName,
+                expectedOld = changes.old,
+                actualCurrent = currentPity
+            })
+        else
+            table.insert(validChanges, {
+                playerName = playerName,
+                oldPity = changes.old,
+                newPity = changes.new
+            })
+        end
+    end
+
+    local hasConflicts = (#conflicts > 0 or #missingPlayers > 0)
+
+    return {
+        hasConflicts = hasConflicts,
+        conflicts = conflicts,
+        missingPlayers = missingPlayers,
+        validChanges = validChanges
+    }
+end
+
+-- Apply validated import changes to database and history
+function addon.ApplyImportChanges(pityChanges)
+    local updateCount = 0
+
+    for playerName, changes in pairs(pityChanges) do
+        PityRollDB.players[playerName] = changes.new
+
+        if not PityRollHistoryDB.pityChanges[playerName] then
+            PityRollHistoryDB.pityChanges[playerName] = {
+                old = changes.old,
+                new = changes.new
+            }
+        else
+            PityRollHistoryDB.pityChanges[playerName].new = changes.new
+        end
+
+        updateCount = updateCount + 1
+        local delta = changes.new - changes.old
+        local sign = delta >= 0 and "+" or ""
+        print(string.format("  %s: %d -> %d (%s%d pity)", playerName, changes.old, changes.new, sign, delta))
+    end
+
+    print(string.format("[PityRoll] Applied import: %d players updated", updateCount))
+end
+
+-- Show conflict error dialog
+function addon.ShowImportConflictDialog(conflictResult)
+    local errorText = "Import failed: Conflicts detected\n\n"
+
+    if #conflictResult.conflicts > 0 then
+        errorText = errorText .. "Pity mismatches:\n"
+        for _, conflict in ipairs(conflictResult.conflicts) do
+            errorText = errorText .. string.format("  %s: Import expects %d, but current pity is %d\n",
+                conflict.playerName, conflict.expectedOld, conflict.actualCurrent)
+        end
+    end
+
+    if #conflictResult.missingPlayers > 0 then
+        if #conflictResult.conflicts > 0 then
+            errorText = errorText .. "\n"
+        end
+        errorText = errorText .. "Players not in database:\n"
+        for _, playerName in ipairs(conflictResult.missingPlayers) do
+            errorText = errorText .. "  " .. playerName .. "\n"
+        end
+    end
+
+    StaticPopupDialogs["PITYROLL_IMPORT_CONFLICT"] = {
+        text = errorText,
+        button1 = "OK",
+        timeout = 0,
+        whileDead = true,
+        hideOnEscape = true,
+        preferredIndex = 3,
+    }
+    StaticPopup_Show("PITYROLL_IMPORT_CONFLICT")
+end
+
+-- Show confirmation dialog with preview of changes
+function addon.ShowImportConfirmationDialog(pityChanges)
+    local frame = CreateFrame("Frame", "PityRollImportConfirmFrame", UIParent, "BasicFrameTemplateWithInset")
+    frame:SetSize(500, 400)
+    frame:SetPoint("CENTER")
+    frame:SetMovable(true)
+    frame:EnableMouse(true)
+    frame:RegisterForDrag("LeftButton")
+    frame:SetScript("OnDragStart", frame.StartMoving)
+    frame:SetScript("OnDragStop", frame.StopMovingOrSizing)
+    frame:SetFrameStrata("DIALOG")
+
+    frame.title = frame:CreateFontString(nil, "OVERLAY")
+    frame.title:SetFontObject("GameFontHighlight")
+    frame.title:SetPoint("TOP", frame.TitleBg, 0, -5)
+    frame.title:SetText("Confirm Import")
+
+    local previewText = "The following pity changes will be applied:\n\n"
+    local changeCount = 0
+    local sortedNames = {}
+    for playerName in pairs(pityChanges) do
+        table.insert(sortedNames, playerName)
+    end
+    table.sort(sortedNames)
+
+    for _, playerName in ipairs(sortedNames) do
+        local changes = pityChanges[playerName]
+        local delta = changes.new - changes.old
+        local sign = delta >= 0 and "+" or ""
+        previewText = previewText .. string.format("%s: %d -> %d (%s%d pity)\n",
+            playerName, changes.old, changes.new, sign, delta)
+        changeCount = changeCount + 1
+    end
+
+    previewText = previewText .. string.format("\nTotal: %d players affected", changeCount)
+
+    local scrollFrame = CreateFrame("ScrollFrame", nil, frame, "UIPanelScrollFrameTemplate")
+    scrollFrame:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, -30)
+    scrollFrame:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -30, 50)
+
+    local editBox = CreateFrame("EditBox", nil, scrollFrame)
+    editBox:SetMultiLine(true)
+    editBox:SetSize(460, 340)
+    editBox:SetFontObject("ChatFontNormal")
+    editBox:SetAutoFocus(false)
+    editBox:SetText(previewText)
+    editBox:SetScript("OnEscapePressed", function()
+        frame:Hide()
+    end)
+
+    scrollFrame:SetScrollChild(editBox)
+
+    local applyButton = CreateFrame("Button", nil, frame, "GameMenuButtonTemplate")
+    applyButton:SetSize(100, 30)
+    applyButton:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 10, 10)
+    applyButton:SetText("Apply")
+    applyButton:SetNormalFontObject("GameFontNormal")
+    applyButton:SetHighlightFontObject("GameFontHighlight")
+    applyButton:SetScript("OnClick", function()
+        addon.ApplyImportChanges(pityChanges)
+        frame:Hide()
+    end)
+
+    local cancelButton = CreateFrame("Button", nil, frame, "GameMenuButtonTemplate")
+    cancelButton:SetSize(100, 30)
+    cancelButton:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -10, 10)
+    cancelButton:SetText("Cancel")
+    cancelButton:SetNormalFontObject("GameFontNormal")
+    cancelButton:SetHighlightFontObject("GameFontHighlight")
+    cancelButton:SetScript("OnClick", function()
+        frame:Hide()
+    end)
+
+    frame:Show()
+end
+
+-- Main import dialog (entry point from context menu)
+function addon.ShowImportDialog()
+    local frame = CreateFrame("Frame", "PityRollImportFrame", UIParent, "BasicFrameTemplateWithInset")
+    frame:SetSize(500, 250)
+    frame:SetPoint("CENTER")
+    frame:SetMovable(true)
+    frame:EnableMouse(true)
+    frame:RegisterForDrag("LeftButton")
+    frame:SetScript("OnDragStart", frame.StartMoving)
+    frame:SetScript("OnDragStop", frame.StopMovingOrSizing)
+    frame:SetFrameStrata("DIALOG")
+
+    frame.title = frame:CreateFontString(nil, "OVERLAY")
+    frame.title:SetFontObject("GameFontHighlight")
+    frame.title:SetPoint("TOP", frame.TitleBg, 0, -5)
+    frame.title:SetText("Import History")
+
+    local instructions = frame:CreateFontString(nil, "OVERLAY")
+    instructions:SetFontObject("GameFontNormal")
+    instructions:SetPoint("TOPLEFT", frame, "TOPLEFT", 15, -30)
+    instructions:SetText("Paste exported history below:")
+
+    local errorLabel = frame:CreateFontString(nil, "OVERLAY")
+    errorLabel:SetFontObject("GameFontNormal")
+    errorLabel:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 15, 45)
+    errorLabel:SetTextColor(1, 0, 0)
+    errorLabel:SetText("")
+
+    local scrollFrame = CreateFrame("ScrollFrame", nil, frame, "UIPanelScrollFrameTemplate")
+    scrollFrame:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, -50)
+    scrollFrame:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -30, 80)
+
+    local editBox = CreateFrame("EditBox", nil, scrollFrame)
+    editBox:SetMultiLine(true)
+    editBox:SetSize(460, 140)
+    editBox:SetFontObject("ChatFontNormal")
+    editBox:SetAutoFocus(true)
+    editBox:SetScript("OnEscapePressed", function()
+        frame:Hide()
+    end)
+
+    scrollFrame:SetScrollChild(editBox)
+
+    local importButton = CreateFrame("Button", nil, frame, "GameMenuButtonTemplate")
+    importButton:SetSize(100, 30)
+    importButton:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 10, 10)
+    importButton:SetText("Import")
+    importButton:SetNormalFontObject("GameFontNormal")
+    importButton:SetHighlightFontObject("GameFontHighlight")
+    importButton:SetScript("OnClick", function()
+        errorLabel:SetText("")
+
+        local text = editBox:GetText()
+        local parseResult = addon.ParseImportedData(text)
+
+        if not parseResult.success then
+            errorLabel:SetText(parseResult.error)
+            return
+        end
+
+        local conflictResult = addon.DetectImportConflicts(parseResult.pityChanges)
+
+        if conflictResult.hasConflicts then
+            frame:Hide()
+            addon.ShowImportConflictDialog(conflictResult)
+            return
+        end
+
+        frame:Hide()
+        addon.ShowImportConfirmationDialog(parseResult.pityChanges)
+    end)
+
+    local cancelButton = CreateFrame("Button", nil, frame, "GameMenuButtonTemplate")
+    cancelButton:SetSize(100, 30)
+    cancelButton:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -10, 10)
+    cancelButton:SetText("Cancel")
+    cancelButton:SetNormalFontObject("GameFontNormal")
+    cancelButton:SetHighlightFontObject("GameFontHighlight")
+    cancelButton:SetScript("OnClick", function()
+        frame:Hide()
+    end)
+
+    frame:Show()
+end
+
 -- Show copy dialog with text pre-selected
 local function ShowCopyDialog(text, title)
     local frame = CreateFrame("Frame", "PityRollCopyFrame", UIParent, "BasicFrameTemplateWithInset")
@@ -446,7 +771,8 @@ function addon.ExportPityChanges()
     local exportText = historyText
 
     if serialized ~= "" then
-        local encoded = addon.Base64Encode(serialized)
+        local markedData = "#PrS#" .. serialized .. "#PrE#"
+        local encoded = addon.Base64Encode(markedData)
         exportText = exportText .. "\n" .. encoded
     end
 

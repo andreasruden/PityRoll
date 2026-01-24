@@ -67,6 +67,14 @@ local function GetMinimapMenuTable()
 	})
 
 	table.insert(menuTable, {
+		text = "Import History",
+		func = function()
+			addon.ShowImportDialog()
+		end,
+		notCheckable = true,
+	})
+
+	table.insert(menuTable, {
 		text = "Cancel",
 		func = function() end,
 		notCheckable = true,
