@@ -16,6 +16,7 @@ Data.lua
 Grid.lua
 Session.lua
 History.lua
+Sync.lua
 UI.lua
 ItemSelection.lua
 Init.lua

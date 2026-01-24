@@ -26,6 +26,13 @@ local function GetMinimapMenuTable()
 			end,
 			notCheckable = true,
 		},
+		{
+			text = "Query State of Followers",
+			func = function()
+				addon.QueryFollowerState()
+			end,
+			notCheckable = true,
+		},
 	}
 
 	if addon.Frames.buttonFrame and addon.Frames.buttonFrame:IsShown() then
@@ -190,7 +197,8 @@ local function OnEvent(self, event, ...)
 				PityRollDB.minimap = {
 					hide = false,
 				}
-				print("|cFF00FF00PityRoll|r: First time setup complete")
+				PityRollDB.syncSource = nil
+		print("|cFF00FF00PityRoll|r: First time setup complete")
 			end
 
 			-- Initialize History DB
@@ -241,6 +249,8 @@ local function OnEvent(self, event, ...)
 				if name and value then
 					State.observedPity[name] = tonumber(value)
 				end
+			elseif message:sub(1, 5) == "SYNC_" then
+				addon.HandleSyncMessage(message, channel, sender)
 			end
 		end
 	end
@@ -301,6 +311,8 @@ SlashCmdList["PITYROLL"] = function(msg)
 		print("/pityroll info <name> - Show pity value for a specific character")
 		print("/pityroll addpity <name> <amount> - Manually add pity points to a character")
 		print("/pityroll setroll <name> <value> - Manually set a player's roll (1-100)")
+		print("/pityroll setsource <name> - Set sync leader to follow")
+		print("/pityroll clearsource - Stop following sync leader")
 		print("/pityroll abort - Close the PityRoll frame")
 	elseif lowerMsg == "version" then
 		print("|cFF00FF00PityRoll|r version: " .. (PityRollDB.version or "1.0.0"))
@@ -377,6 +389,11 @@ SlashCmdList["PITYROLL"] = function(msg)
 		else
 			print("|cFFFF0000Error:|r Unknown history command")
 		end
+	elseif lowerMsg:match("^setsource%s+") then
+		local sourceName = msg:match("^setsource%s+(.+)")
+		addon.SetSyncSource(sourceName)
+	elseif lowerMsg == "clearsource" then
+		addon.ClearSyncSource()
 	else
 		print("|cFF00FF00PityRoll|r: Unknown command. Type /pityroll help for commands")
 	end
