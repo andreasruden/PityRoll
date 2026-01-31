@@ -312,7 +312,49 @@ function addon.BossBeginSession()
 	end
 end
 
-function addon.BossEndSession()
+local function FormatItemList(itemNames, limit)
+	local displayItems = {}
+	for i = 1, math.min(#itemNames, limit) do
+		table.insert(displayItems, "  - " .. itemNames[i])
+	end
+
+	if #itemNames > limit then
+		table.insert(displayItems, "  - and " .. (#itemNames - limit) .. " more...")
+	end
+
+	return table.concat(displayItems, "\n")
+end
+
+local function CheckUndistributedItemsBeforeEndBoss(onConfirm)
+	if #State.currentBossSession.lootItems == 0 then
+		onConfirm()
+		return
+	end
+
+	local itemCount = #State.currentBossSession.itemNames
+	local itemList = FormatItemList(State.currentBossSession.itemNames, 5)
+
+	local message = "There are " .. itemCount .. " undistributed item(s) remaining:\n\n" ..
+		itemList .. "\n\n" ..
+		"Ending the boss session will forfeit these items. Are you sure?"
+
+	StaticPopupDialogs["PITYROLL_END_BOSS_CONFIRM"] = {
+		text = message,
+		button1 = "End Anyway",
+		button2 = "Cancel",
+		OnAccept = function()
+			onConfirm()
+		end,
+		timeout = 0,
+		whileDead = true,
+		hideOnEscape = true,
+		preferredIndex = 3,
+	}
+
+	StaticPopup_Show("PITYROLL_END_BOSS_CONFIRM")
+end
+
+local function BossEndSessionInternal()
 	if not IsInRaid() and not IsInGroup() then
 		print("|cFFFF0000Error:|r You must be in a party or raid to use /pr bossend")
 		return
@@ -362,7 +404,11 @@ function addon.BossEndSession()
 	addon.HideButtonFrame()
 end
 
-function addon.EndBossNoPity()
+function addon.BossEndSession()
+	CheckUndistributedItemsBeforeEndBoss(BossEndSessionInternal)
+end
+
+local function EndBossNoPityInternal()
 	if not IsInRaid() and not IsInGroup() then
 		print("|cFFFF0000Error:|r You must be in a party or raid to end boss")
 		return
@@ -388,4 +434,8 @@ function addon.EndBossNoPity()
 	end
 
 	addon.HideButtonFrame()
+end
+
+function addon.EndBossNoPity()
+	CheckUndistributedItemsBeforeEndBoss(EndBossNoPityInternal)
 end
