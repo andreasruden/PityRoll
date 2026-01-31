@@ -7,10 +7,13 @@ local function BuildLosersArray(allResults, winner)
     local losers = {}
     for _, result in ipairs(allResults) do
         if result.name ~= winner.name and not result.ignored then
-            table.insert(losers, result.name)
+            local playerName = result.name
+            local oldPity = PityRollDB.players[playerName] or 0
+            local newPity = math.min(oldPity + addon.Constants.PITY_INCREMENT, addon.Constants.MAX_PITY)
+            table.insert(losers, {playerName, newPity})
         end
     end
-    table.sort(losers)
+    table.sort(losers, function(a, b) return a[1] < b[1] end)
     return losers
 end
 
@@ -47,14 +50,25 @@ end
 local function FormatLosersList(losers)
     if #losers == 0 then
         return "no other rollers"
-    elseif #losers <= 5 then
-        return table.concat(losers, ", ")
+    end
+
+    local formattedLosers = {}
+    for i, loser in ipairs(losers) do
+        if type(loser) == "table" then
+            table.insert(formattedLosers, loser[1] .. " " .. loser[2])
+        else
+            table.insert(formattedLosers, loser)
+        end
+    end
+
+    if #formattedLosers <= 5 then
+        return table.concat(formattedLosers, ", ")
     else
         local first5 = {}
         for i = 1, 5 do
-            first5[i] = losers[i]
+            first5[i] = formattedLosers[i]
         end
-        return table.concat(first5, ", ") .. " and " .. (#losers - 5) .. " others"
+        return table.concat(first5, ", ") .. " and " .. (#formattedLosers - 5) .. " others"
     end
 end
 
