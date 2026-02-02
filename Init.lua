@@ -328,7 +328,12 @@ ChatFrame_AddMessageEventFilter("CHAT_MSG_SYSTEM", function(self, event, message
 	-- Strip realm name for lookup
 	local cleanName = playerName:match("([^-]+)") or playerName
 
-	local pity = State.observedPity[cleanName] or (PityRollDB.players and PityRollDB.players[cleanName]) or 0
+	local pity
+	if next(State.observedPity) == nil then
+		pity = (PityRollDB.players and PityRollDB.players[cleanName]) or 0
+	else
+		pity = State.observedPity[cleanName] or 0
+	end
 	if pity == 0 then
 		return false
 	end
