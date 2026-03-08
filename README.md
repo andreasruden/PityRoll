@@ -2,6 +2,8 @@
 
 An addon for WoW classic to implement a Pity Roll system for raiding.
 
+**Disclaimer**: This addon is AI generated. Use at your own risk.
+
 ## Installation
 
 Move folder into AddOns directory. All user-specific data is stored in WTF.
