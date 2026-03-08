@@ -293,6 +293,11 @@ function addon.BossBeginSession()
 		return
 	end
 
+	if not UnitIsGroupLeader("player") and not IsMasterLooter() then
+		print("|cFFFF0000Error:|r You must be group leader or master looter to start a boss encounter")
+		return
+	end
+
 	local success, errorMsg = addon.CaptureBossLootData()
 	if not success then
 		print("|cFFFF0000Error:|r " .. errorMsg)
