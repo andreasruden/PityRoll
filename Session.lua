@@ -240,6 +240,7 @@ end
 function addon.StartRollSessionWithItem(itemLink, itemName)
 	State.currentRollItemLink = itemLink
 	State.currentRollItemName = itemName
+	addon.AnnounceRollItem(itemLink)
 	addon.CreatePityRollFrame()
 	addon.UpdateButtonFrameButtons()
 	addon.BroadcastPityData()
