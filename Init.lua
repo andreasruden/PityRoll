@@ -176,8 +176,8 @@ local function HandleSystemMessage(message)
 
 	minRoll = tonumber(minRoll)
 	maxRoll = tonumber(maxRoll)
-	if minRoll ~= 1 or maxRoll ~= 100 then
-		print("|cFF00FF00PityRoll DEBUG:|r Not a 1-100 roll, ignoring")
+	if minRoll ~= 1 or (maxRoll ~= 100 and maxRoll ~= 90) then
+		print("|cFF00FF00PityRoll DEBUG:|r Not a 1-100 or 1-90 roll, ignoring")
 		return
 	end
 
@@ -199,14 +199,16 @@ local function HandleSystemMessage(message)
 	end
 
 	print("|cFF00FF00PityRoll DEBUG:|r Found class: " .. className .. " for " .. playerName)
-	rollBonus = PityRollDB.players[playerName] or 0
-	addon.AddSquareToGrid(className, playerName, rollValue, rollBonus)
+	local isNonStandard = maxRoll ~= 100
+	rollBonus = isNonStandard and 0 or (PityRollDB.players[playerName] or 0)
+	addon.AddSquareToGrid(className, playerName, rollValue, rollBonus, isNonStandard)
 
 	State.playerRolls[playerName] = {
 		rollValue = rollValue,
 		rollBonus = rollBonus,
 		className = className,
-		ignored = false
+		ignored = false,
+		nonStandardRoll = isNonStandard
 	}
 end
 

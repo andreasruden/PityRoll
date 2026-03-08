@@ -203,7 +203,7 @@ function addon.FinishRollSession(specifiedWinner)
 	end
 
 	for playerName, rollData in pairs(State.playerRolls) do
-		if playerName ~= winner.name and not rollData.ignored then
+		if playerName ~= winner.name and not rollData.ignored and not rollData.nonStandardRoll then
 			local oldPity = PityRollDB.players[playerName] or 0
 			local newPity = oldPity + Constants.PITY_INCREMENT
 			local cappedPity = math.min(newPity, Constants.MAX_PITY)
@@ -212,9 +212,11 @@ function addon.FinishRollSession(specifiedWinner)
 		end
 	end
 
-	local oldPity = PityRollDB.players[winner.name] or 0
-	PityRollDB.players[winner.name] = 0
-	addon.RecordPityChange(winner.name, oldPity, 0)
+	if not State.playerRolls[winner.name].nonStandardRoll then
+		local oldPity = PityRollDB.players[winner.name] or 0
+		PityRollDB.players[winner.name] = 0
+		addon.RecordPityChange(winner.name, oldPity, 0)
+	end
 
 	State.hasFinishedRollSession = true
 

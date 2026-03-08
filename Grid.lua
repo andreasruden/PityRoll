@@ -55,7 +55,7 @@ local function OnSquareClick(clickFrame)
 	end
 end
 
-local function CreateSquare(playerName, className, rollValue, rollBonus, isIgnored)
+local function CreateSquare(playerName, className, rollValue, rollBonus, isIgnored, isNonStandard)
 	local pityRollFrame = addon.Frames.pityRollFrame
 	local squareCount = #State.gridSquares
 	local frameWidth = pityRollFrame:GetWidth()
@@ -109,7 +109,8 @@ local function CreateSquare(playerName, className, rollValue, rollBonus, isIgnor
 
 	local rollText = pityRollFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
 	rollText:SetPoint("BOTTOM", square, "BOTTOM", 0, 3)
-	rollText:SetText(rollValue .. " (+" .. rollBonus .. ")")
+	local bonusStr = isNonStandard and "(--)" or ("(+" .. rollBonus .. ")")
+	rollText:SetText(rollValue .. " " .. bonusStr)
 	rollText:SetTextColor(1, 1, 1, 1)
 	rollText:SetWidth(Constants.SQUARE_WIDTH - 4)
 	rollText:SetJustifyH("CENTER")
@@ -135,7 +136,7 @@ local function CreateSquare(playerName, className, rollValue, rollBonus, isIgnor
 	})
 end
 
-function addon.AddSquareToGrid(className, playerName, rollValue, rollBonus)
+function addon.AddSquareToGrid(className, playerName, rollValue, rollBonus, isNonStandard)
 	if not addon.Frames.pityRollFrame or not addon.Frames.pityRollFrame:IsShown() then
 		print("|cFFFF0000Error:|r Pity frame must be open to add squares. Use /pr new first.")
 		return
@@ -161,7 +162,7 @@ function addon.AddSquareToGrid(className, playerName, rollValue, rollBonus)
 		return
 	end
 
-	CreateSquare(playerName, className, rollValue, rollBonus, false)
+	CreateSquare(playerName, className, rollValue, rollBonus, false, isNonStandard)
 
 	print("|cFF00FF00Added square " .. #State.gridSquares .. " to the grid.|r")
 end
@@ -194,7 +195,7 @@ function addon.RegenerateGrid()
 
 	for _, playerName in ipairs(sortedPlayers) do
 		local rollData = State.playerRolls[playerName]
-		CreateSquare(playerName, rollData.className, rollData.rollValue, rollData.rollBonus, rollData.ignored)
+		CreateSquare(playerName, rollData.className, rollData.rollValue, rollData.rollBonus, rollData.ignored, rollData.nonStandardRoll)
 	end
 
 	if State.tieResolutionMode and State.tiedPlayers then
