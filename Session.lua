@@ -79,6 +79,34 @@ local function EnterTieResolutionMode(tiedPlayersList)
 	addon.UpdateButtonFrameButtons()
 end
 
+local function GiveLootToWinner(winner)
+	if not IsMasterLooter() then return end
+
+	if GetNumLootItems() == 0 then
+		print("|cFF00FF00PityRoll:|r Loot window is closed. Open it to award the item automatically.")
+		return
+	end
+
+	local targetSlot
+	for slot = 1, GetNumLootItems() do
+		if GetLootSlotType(slot) == LOOT_SLOT_ITEM and GetLootSlotLink(slot) == State.currentRollItemLink then
+			targetSlot = slot
+			break
+		end
+	end
+
+	if not targetSlot then return end
+
+	-- Scan master loot candidates for this slot to find the winner's player index
+	for i = 1, GetNumGroupMembers() do
+		local candidate = GetMasterLootCandidate(targetSlot, i)
+		if candidate == winner.name then
+			GiveMasterLoot(targetSlot, i)
+			return
+		end
+	end
+end
+
 function addon.FinishRollSession(specifiedWinner)
 	if not next(State.playerRolls) then
 		print("|cFF00FF00PityRoll:|r No rolls recorded. Closing window.")
@@ -181,6 +209,7 @@ function addon.FinishRollSession(specifiedWinner)
 				break
 			end
 		end
+		GiveLootToWinner(winner)
 		print("|cFF00FF00PityRoll:|r " .. State.currentRollItemName .. " awarded to " .. winner.name)
 
 		-- Record history entry
