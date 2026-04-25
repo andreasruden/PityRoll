@@ -136,7 +136,7 @@ local function CreateSquare(playerName, className, rollValue, rollBonus, isIgnor
 	})
 end
 
-function addon.AddSquareToGrid(className, playerName, rollValue, rollBonus, isNonStandard)
+function addon.AddSquareToGrid(className, playerName, rollValue, rollBonus, isNonStandard, isIgnored)
 	if not addon.Frames.pityRollFrame or not addon.Frames.pityRollFrame:IsShown() then
 		print("|cFFFF0000Error:|r Pity frame must be open to add squares. Use /pr new first.")
 		return
@@ -162,7 +162,7 @@ function addon.AddSquareToGrid(className, playerName, rollValue, rollBonus, isNo
 		return
 	end
 
-	CreateSquare(playerName, className, rollValue, rollBonus, false, isNonStandard)
+	CreateSquare(playerName, className, rollValue, rollBonus, isIgnored or false, isNonStandard)
 
 	print("|cFF00FF00Added square " .. #State.gridSquares .. " to the grid.|r")
 end

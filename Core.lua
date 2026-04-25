@@ -150,7 +150,7 @@ function addon.WriteToChat(message)
 end
 
 function addon.AnnounceRollItem(itemLink)
-	local message = "Rolling for " .. itemLink .. ". If this matches your Main Spec, type /roll to use your pity or /roll 90 to ignore pity."
+	local message = "Rolling for " .. itemLink .. ". If this matches your Main Spec, type /roll to use your pity or /roll 99 to ignore pity."
 	if IsInRaid() then
 		if UnitIsGroupLeader("player") or UnitIsGroupAssistant("player") then
 			SendChatMessage(message, "RAID_WARNING")

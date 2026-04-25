@@ -176,8 +176,8 @@ local function HandleSystemMessage(message)
 
 	minRoll = tonumber(minRoll)
 	maxRoll = tonumber(maxRoll)
-	if minRoll ~= 1 or (maxRoll ~= 100 and maxRoll ~= 90) then
-		print("|cFF00FF00PityRoll DEBUG:|r Not a 1-100 or 1-90 roll, ignoring")
+	if minRoll ~= 1 or (maxRoll ~= 100 and maxRoll ~= 99) then
+		print("|cFF00FF00PityRoll DEBUG:|r Not a 1-100 or 1-99 roll, ignoring")
 		return
 	end
 
@@ -201,15 +201,41 @@ local function HandleSystemMessage(message)
 	print("|cFF00FF00PityRoll DEBUG:|r Found class: " .. className .. " for " .. playerName)
 	local isNonStandard = maxRoll ~= 100
 	rollBonus = isNonStandard and 0 or (PityRollDB.players[playerName] or 0)
-	addon.AddSquareToGrid(className, playerName, rollValue, rollBonus, isNonStandard)
+
+	-- Auto-ignore a /roll 99 if any active pity roll already exists
+	local startIgnored = false
+	if isNonStandard then
+		for _, rollData in pairs(State.playerRolls) do
+			if not rollData.nonStandardRoll and not rollData.ignored then
+				startIgnored = true
+				break
+			end
+		end
+	end
+
+	addon.AddSquareToGrid(className, playerName, rollValue, rollBonus, isNonStandard, startIgnored)
 
 	State.playerRolls[playerName] = {
 		rollValue = rollValue,
 		rollBonus = rollBonus,
 		className = className,
-		ignored = false,
+		ignored = startIgnored,
 		nonStandardRoll = isNonStandard
 	}
+
+	-- When a pity roll arrives, auto-ignore all existing /roll 99 entries
+	if not isNonStandard then
+		local anyIgnored = false
+		for _, rollData in pairs(State.playerRolls) do
+			if rollData.nonStandardRoll and not rollData.ignored then
+				rollData.ignored = true
+				anyIgnored = true
+			end
+		end
+		if anyIgnored then
+			addon.RegenerateGrid()
+		end
+	end
 end
 
 local function OnEvent(self, event, ...)
