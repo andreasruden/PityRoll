@@ -48,10 +48,18 @@ function addon.UpdateButtonFrameButtons()
 		else
 			addon.Frames.buttonFrame.finishButton:Enable()
 		end
+
+		addon.Frames.buttonFrame.awardDirectlyButton:Disable()
 	else
 		addon.Frames.buttonFrame.newButton:SetText("New Item")
 		addon.Frames.buttonFrame.newButton:Enable()
 		addon.Frames.buttonFrame.finishButton:Disable()
+
+		if State.currentBossSession.isActive and #State.currentBossSession.lootItems > 0 then
+			addon.Frames.buttonFrame.awardDirectlyButton:Enable()
+		else
+			addon.Frames.buttonFrame.awardDirectlyButton:Disable()
+		end
 	end
 end
 
@@ -116,7 +124,7 @@ function addon.CreateButtonFrame()
 	end
 
 	addon.Frames.buttonFrame = CreateFrame("Frame", "PityRollButtonFrame", UIParent)
-	addon.Frames.buttonFrame:SetSize(300, 30)
+	addon.Frames.buttonFrame:SetSize(410, 30)
 
 	if PityRollDB.buttonFramePosition then
 		local pos = PityRollDB.buttonFramePosition
@@ -140,7 +148,7 @@ function addon.CreateButtonFrame()
 
 	local newButton = CreateFrame("Button", nil, addon.Frames.buttonFrame, "UIPanelButtonTemplate")
 	newButton:SetSize(90, 25)
-	newButton:SetPoint("CENTER", addon.Frames.buttonFrame, "CENTER", -100, 0)
+	newButton:SetPoint("CENTER", addon.Frames.buttonFrame, "CENTER", -150, 0)
 	newButton:SetText("New Item")
 	newButton:SetScript("OnClick", function()
 		if addon.Frames.pityRollFrame and addon.Frames.pityRollFrame:IsShown() then
@@ -155,7 +163,7 @@ function addon.CreateButtonFrame()
 
 	local finishButton = CreateFrame("Button", nil, addon.Frames.buttonFrame, "UIPanelButtonTemplate")
 	finishButton:SetSize(90, 25)
-	finishButton:SetPoint("CENTER", addon.Frames.buttonFrame, "CENTER", 0, 0)
+	finishButton:SetPoint("CENTER", addon.Frames.buttonFrame, "CENTER", -50, 0)
 	finishButton:SetText("Award Item")
 	finishButton:SetScript("OnClick", function()
 		addon.FinishRollSession(nil)
@@ -163,9 +171,27 @@ function addon.CreateButtonFrame()
 
 	addon.Frames.buttonFrame.finishButton = finishButton
 
+	local awardDirectlyButton = CreateFrame("Button", nil, addon.Frames.buttonFrame, "UIPanelButtonTemplate")
+	awardDirectlyButton:SetSize(90, 25)
+	awardDirectlyButton:SetPoint("CENTER", addon.Frames.buttonFrame, "CENTER", 50, 0)
+	awardDirectlyButton:SetText("Award Directly")
+	awardDirectlyButton:Disable()
+	awardDirectlyButton:SetScript("OnClick", function()
+		addon.ShowItemSelectionDialogWithCallback(function(itemLink, itemName)
+			addon.ShowPlayerSelectionDialog({
+				title = "Award " .. itemLink,
+				buttonLabel = "Give Item",
+				onConfirm = function(playerName)
+					addon.ExecuteDirectAward(itemLink, itemName, playerName)
+				end,
+			})
+		end)
+	end)
+	addon.Frames.buttonFrame.awardDirectlyButton = awardDirectlyButton
+
 	local endBossButton = CreateFrame("Button", nil, addon.Frames.buttonFrame, "UIPanelButtonTemplate")
 	endBossButton:SetSize(90, 25)
-	endBossButton:SetPoint("CENTER", addon.Frames.buttonFrame, "CENTER", 100, 0)
+	endBossButton:SetPoint("CENTER", addon.Frames.buttonFrame, "CENTER", 150, 0)
 	endBossButton:SetText("End Boss")
 	endBossButton:SetScript("OnClick", function()
 		addon.BossEndSession()

@@ -43,8 +43,14 @@ local function CreateItemRow(parent, index, itemLink, itemName)
 	selectButton:SetPoint("RIGHT", row, "RIGHT", -5, 0)
 	selectButton:SetText("Select")
 	selectButton:SetScript("OnClick", function()
+		local cb = itemSelectionFrame.onSelectCallback
 		itemSelectionFrame:Hide()
-		addon.StartRollSessionWithItem(itemLink, itemName)
+		itemSelectionFrame.onSelectCallback = nil
+		if cb then
+			cb(itemLink, itemName)
+		else
+			addon.StartRollSessionWithItem(itemLink, itemName)
+		end
 	end)
 
 	return row
@@ -125,4 +131,12 @@ function addon.ShowItemSelectionDialog()
 	end
 
 	itemSelectionFrame:Show()
+end
+
+function addon.ShowItemSelectionDialogWithCallback(callback)
+	if not itemSelectionFrame then
+		addon.CreateItemSelectionFrame()
+	end
+	itemSelectionFrame.onSelectCallback = callback
+	addon.ShowItemSelectionDialog()
 end

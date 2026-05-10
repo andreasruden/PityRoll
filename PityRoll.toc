@@ -19,4 +19,5 @@ History.lua
 Sync.lua
 UI.lua
 ItemSelection.lua
+PlayerSelection.lua
 Init.lua

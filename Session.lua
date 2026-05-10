@@ -107,6 +107,12 @@ local function GiveLootToWinner(winner)
 	end
 end
 
+function addon.GiveItemToPlayer(winner, itemLink)
+	State.currentRollItemLink = itemLink
+	GiveLootToWinner(winner)
+	State.currentRollItemLink = nil
+end
+
 function addon.FinishRollSession(specifiedWinner)
 	if not next(State.playerRolls) then
 		print("|cFF00FF00PityRoll:|r No rolls recorded. Closing window.")
@@ -201,22 +207,25 @@ function addon.FinishRollSession(specifiedWinner)
 	end
 	addon.WriteToChat("WINNER: " .. winner.name .. " (" .. winner.total .. ")")
 
-	if State.currentRollItemLink then
+	local awardedItemLink = State.currentRollItemLink
+	local awardedItemName = State.currentRollItemName
+
+	if awardedItemLink then
 		for i = #State.currentBossSession.lootItems, 1, -1 do
-			if State.currentBossSession.lootItems[i] == State.currentRollItemLink then
+			if State.currentBossSession.lootItems[i] == awardedItemLink then
 				table.remove(State.currentBossSession.lootItems, i)
 				table.remove(State.currentBossSession.itemNames, i)
 				break
 			end
 		end
 		GiveLootToWinner(winner)
-		print("|cFF00FF00PityRoll:|r " .. State.currentRollItemName .. " awarded to " .. winner.name)
+		print("|cFF00FF00PityRoll:|r " .. awardedItemName .. " awarded to " .. winner.name)
 
 		-- Record history entry
 		addon.RecordHistoryEntry(
 			State.currentBossSession.bossName,
-			State.currentRollItemLink,
-			State.currentRollItemName,
+			awardedItemLink,
+			awardedItemName,
 			winner,
 			results
 		)
@@ -241,10 +250,22 @@ function addon.FinishRollSession(specifiedWinner)
 		end
 	end
 
-	if not State.playerRolls[winner.name].nonStandardRoll then
+	local winnerIsNonStandard = State.playerRolls[winner.name].nonStandardRoll
+	if not winnerIsNonStandard then
 		local oldPity = PityRollDB.players[winner.name] or 0
 		PityRollDB.players[winner.name] = 0
 		addon.RecordPityChange(winner.name, oldPity, 0)
+	end
+
+	if awardedItemLink then
+		local pityMsg
+		if winnerIsNonStandard then
+			local remainingPity = PityRollDB.players[winner.name] or 0
+			pityMsg = winner.name .. " has been awarded " .. awardedItemLink .. ". Their pity remains at " .. remainingPity .. "."
+		else
+			pityMsg = winner.name .. " has been awarded " .. awardedItemLink .. ". Their pity is now 0."
+		end
+		addon.WriteToChat(pityMsg)
 	end
 
 	State.hasFinishedRollSession = true
@@ -273,6 +294,38 @@ function addon.StartRollSessionWithItem(itemLink, itemName)
 	addon.CreatePityRollFrame()
 	addon.UpdateButtonFrameButtons()
 	addon.BroadcastPityData()
+end
+
+function addon.ExecuteDirectAward(itemLink, itemName, playerName)
+	local oldPity = PityRollDB.players[playerName] or 0
+	PityRollDB.players[playerName] = 0
+	addon.RecordPityChange(playerName, oldPity, 0)
+
+	for i = #State.currentBossSession.lootItems, 1, -1 do
+		if State.currentBossSession.lootItems[i] == itemLink then
+			table.remove(State.currentBossSession.lootItems, i)
+			table.remove(State.currentBossSession.itemNames, i)
+			break
+		end
+	end
+
+	local winner = { name = playerName, rollValue = 0, rollBonus = 0, total = 0 }
+	addon.RecordHistoryEntry(
+		State.currentBossSession.bossName,
+		itemLink,
+		itemName,
+		winner,
+		{}
+	)
+
+	State.encounterRollers[playerName] = true
+
+	addon.GiveItemToPlayer(winner, itemLink)
+
+	addon.WriteToChat(playerName .. " has been awarded " .. itemLink .. ". Their pity is now 0.")
+
+	print("|cFF00FF00PityRoll:|r " .. itemName .. " directly awarded to " .. playerName)
+	addon.UpdateButtonFrameButtons()
 end
 
 function addon.CaptureBossLootData()
