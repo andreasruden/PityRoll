@@ -318,10 +318,12 @@ local function OnEvent(self, event, ...)
 		if prefix == Constants.ADDON_PREFIX then
 			if message == "CLEAR" then
 				State.observedPity = {}
-			elseif message:sub(1, 5) == "PITY:" then
-				local name, value = message:match("^PITY:(.+):(%d+)$")
-				if name and value then
-					State.observedPity[name] = tonumber(value)
+			elseif message:sub(1, 10) == "PITYBATCH:" then
+				for entry in message:sub(11):gmatch("[^,]+") do
+					local name, value = entry:match("^(.+):(%d+)$")
+					if name and value then
+						State.observedPity[name] = tonumber(value)
+					end
 				end
 			elseif message:sub(1, 5) == "SYNC_" then
 				addon.HandleSyncMessage(message, channel, sender)

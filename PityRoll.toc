@@ -5,6 +5,7 @@
 ## Version: 1.0.0
 ## SavedVariables: PityRollDB, PityRollHistoryDB
 
+Libs\ChatThrottleLib\ChatThrottleLib.lua
 Libs\LibStub\LibStub.lua
 Libs\CallbackHandler-1.0\CallbackHandler-1.0.lua
 Libs\LibDataBroker-1.1\LibDataBroker-1.1.lua

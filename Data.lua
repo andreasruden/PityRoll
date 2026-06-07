@@ -6,15 +6,25 @@ function addon.BroadcastPityData()
 	local channel = addon.GetGroupChannel()
 	if not channel then return end
 
+	local entries = {}
 	for playerName, pityValue in pairs(PityRollDB.players) do
-		C_ChatInfo.SendAddonMessage(Constants.ADDON_PREFIX, "PITY:" .. playerName .. ":" .. pityValue, channel)
+		table.insert(entries, playerName .. ":" .. pityValue)
+	end
+
+	local BATCH_SIZE = 5
+	for i = 1, #entries, BATCH_SIZE do
+		local batch = {}
+		for j = i, math.min(i + BATCH_SIZE - 1, #entries) do
+			table.insert(batch, entries[j])
+		end
+		ChatThrottleLib:SendAddonMessage("NORMAL", Constants.ADDON_PREFIX, "PITYBATCH:" .. table.concat(batch, ","), channel)
 	end
 end
 
 function addon.BroadcastClear()
 	local channel = addon.GetGroupChannel()
 	if not channel then return end
-	C_ChatInfo.SendAddonMessage(Constants.ADDON_PREFIX, "CLEAR", channel)
+	ChatThrottleLib:SendAddonMessage("NORMAL", Constants.ADDON_PREFIX, "CLEAR", channel)
 end
 
 function addon.ReportPityValues()
