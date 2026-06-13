@@ -5,6 +5,7 @@ PityRoll = addon
 addon.Constants = {
 	MAX_PITY = 50,
 	PITY_INCREMENT = 5,
+	BOSS_PITY = 2,
 	ADDON_PREFIX = "PityRoll",
 
 	-- Rate limiting configuration

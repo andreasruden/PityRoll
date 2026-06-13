@@ -461,7 +461,7 @@ local function BossEndSessionInternal()
 
 	for _, playerName in ipairs(nonRollers) do
 		local oldPity = PityRollDB.players[playerName] or 0
-		local newPity = oldPity + 1
+		local newPity = oldPity + Constants.BOSS_PITY
 		local cappedPity = math.min(newPity, Constants.MAX_PITY)
 		PityRollDB.players[playerName] = cappedPity
 		addon.RecordPityChange(playerName, oldPity, cappedPity)
@@ -469,7 +469,7 @@ local function BossEndSessionInternal()
 
 	if #nonRollers > 0 then
 		local names = table.concat(nonRollers, ", ")
-		print("|cFF00FF00PityRoll:|r Awarded +1 pity to " .. #nonRollers .. " non-rollers: " .. names)
+		print("|cFF00FF00PityRoll:|r Awarded +" .. Constants.BOSS_PITY .. " pity to " .. #nonRollers .. " non-rollers: " .. names)
 	else
 		print("|cFF00FF00PityRoll:|r All group members rolled - no pity awarded")
 	end
