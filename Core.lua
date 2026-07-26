@@ -163,4 +163,20 @@ function addon.AnnounceRollItem(itemLink)
 	else
 		print(message)
 	end
+
+	addon.AnnouncePriority(itemLink)
+end
+
+function addon.AnnouncePriority(itemLink)
+	local itemId = tonumber(itemLink:match("item:(%d+)"))
+	local tiers = itemId and addon.Priorities[itemId]
+	if not tiers then return end
+
+	local parts = {}
+	for _, tier in ipairs(tiers) do
+		table.insert(parts, table.concat(tier, ", "))
+	end
+
+	addon.WriteToChat("Priority:")
+	addon.WriteToChat(table.concat(parts, "  >  "))
 end
