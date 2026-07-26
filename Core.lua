@@ -186,3 +186,21 @@ function addon.AnnouncePriority(itemLink)
 
 	addon.ShowPriorityFrame(itemLink)
 end
+
+function addon.PrintPriorityForItemId(itemId)
+	local tiers = addon.Priorities[itemId]
+	if not tiers then
+		print("|cFFFF0000PityRoll:|r No priority found for item id " .. itemId)
+		return
+	end
+
+	local itemName, itemLink = GetItemInfo(itemId)
+	local itemDisplay = itemLink or itemName or ("item:" .. itemId)
+
+	local parts = {}
+	for _, tier in ipairs(tiers) do
+		table.insert(parts, table.concat(tier, ", "))
+	end
+
+	print(itemDisplay .. ": " .. table.concat(parts, "  >  "))
+end

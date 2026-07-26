@@ -399,6 +399,7 @@ SlashCmdList["PITYROLL"] = function(msg)
 		print("/pityroll info <name> - Show pity value for a specific character")
 		print("/pityroll addpity <name> <amount> - Manually add pity points to a character")
 		print("/pityroll setroll <name> <value> - Manually set a player's roll (1-100)")
+		print("/pityroll priorities <item id> - Show loot priority for an item")
 		print("/pityroll setsource <name> - Set sync leader to follow")
 		print("/pityroll clearsource - Stop following sync leader")
 		print("/pityroll abort - Close the PityRoll frame")
@@ -476,6 +477,13 @@ SlashCmdList["PITYROLL"] = function(msg)
 			print(string.format("|cFF00FF00PityRoll History:|r %d encounters, %d items awarded", encounters, items))
 		else
 			print("|cFFFF0000Error:|r Unknown history command")
+		end
+	elseif lowerMsg:match("^priorities%s+") then
+		local itemId = tonumber(msg:match("^priorities%s+(%d+)"))
+		if not itemId then
+			print("|cFFFF0000Error:|r Usage: /pr priorities <item id>")
+		else
+			addon.PrintPriorityForItemId(itemId)
 		end
 	elseif lowerMsg:match("^setsource%s+") then
 		local sourceName = msg:match("^setsource%s+(.+)")
