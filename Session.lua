@@ -21,6 +21,7 @@ function addon.EndSession()
 	end
 
 	addon.BroadcastClear()
+	addon.HidePriorityFrame()
 
 	if addon.Frames.pityRollFrame then
 		addon.Frames.pityRollFrame:Hide()

@@ -59,7 +59,8 @@ addon.State = {
 addon.Frames = {
 	eventFrame = nil,
 	pityRollFrame = nil,
-	buttonFrame = nil
+	buttonFrame = nil,
+	priorityFrame = nil
 }
 
 -- Stubs for cross-module functions (will be implemented by other modules)
@@ -170,7 +171,10 @@ end
 function addon.AnnouncePriority(itemLink)
 	local itemId = tonumber(itemLink:match("item:(%d+)"))
 	local tiers = itemId and addon.Priorities[itemId]
-	if not tiers then return end
+	if not tiers then
+		addon.HidePriorityFrame()
+		return
+	end
 
 	local parts = {}
 	for _, tier in ipairs(tiers) do
@@ -179,4 +183,6 @@ function addon.AnnouncePriority(itemLink)
 
 	addon.WriteToChat("Priority:")
 	addon.WriteToChat(table.concat(parts, "  >  "))
+
+	addon.ShowPriorityFrame(itemLink)
 end

@@ -262,6 +262,13 @@ local function OnEvent(self, event, ...)
 					xOffset = 0,
 					yOffset = 0
 				}
+				PityRollDB.priorityFramePosition = {
+					point = "CENTER",
+					relativeTo = nil,
+					relativePoint = "CENTER",
+					xOffset = 200,
+					yOffset = 100
+				}
 				PityRollDB.minimap = {
 					hide = false,
 				}

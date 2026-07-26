@@ -14,6 +14,7 @@ Libs\LibUIDropDownMenu\LibUIDropDownMenu.xml
 
 Core.lua
 Priorities.lua
+PriorityFrame.lua
 Data.lua
 Grid.lua
 Session.lua
