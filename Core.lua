@@ -187,20 +187,65 @@ function addon.AnnouncePriority(itemLink)
 	addon.ShowPriorityFrame(itemLink)
 end
 
-function addon.PrintPriorityForItemId(itemId)
-	local tiers = addon.Priorities[itemId]
-	if not tiers then
-		print("|cFFFF0000PityRoll:|r No priority found for item id " .. itemId)
+-- itemId -> list of callbacks waiting on GetItemInfo to resolve
+addon.State.pendingItemInfoCallbacks = {}
+
+function addon.RequestItemDisplay(itemId, callback)
+	local itemName, itemLink = GetItemInfo(itemId)
+	if itemLink or itemName then
+		callback(itemLink or itemName)
 		return
 	end
 
+	-- Not cached client-side yet; GetItemInfo already triggered a server
+	-- query, so wait for GET_ITEM_INFO_RECEIVED and retry then.
+	local callbacks = addon.State.pendingItemInfoCallbacks[itemId]
+	if not callbacks then
+		callbacks = {}
+		addon.State.pendingItemInfoCallbacks[itemId] = callbacks
+	end
+	table.insert(callbacks, callback)
+end
+
+function addon.OnItemInfoReceived(itemId)
+	local callbacks = addon.State.pendingItemInfoCallbacks[itemId]
+	if not callbacks then
+		return
+	end
+	addon.State.pendingItemInfoCallbacks[itemId] = nil
+
 	local itemName, itemLink = GetItemInfo(itemId)
-	local itemDisplay = itemLink or itemName or ("item:" .. itemId)
+	local itemDisplay = itemLink or itemName or ("Item #" .. itemId)
+	for _, callback in ipairs(callbacks) do
+		callback(itemDisplay)
+	end
+end
+
+function addon.GetPriorityMessageForItemId(itemId, callback)
+	local tiers = addon.Priorities[itemId]
+	if not tiers then
+		callback(nil, "No priority found for item id " .. itemId)
+		return
+	end
 
 	local parts = {}
 	for _, tier in ipairs(tiers) do
 		table.insert(parts, table.concat(tier, ", "))
 	end
+	local tierText = table.concat(parts, "  >  ")
 
-	print(itemDisplay .. ": " .. table.concat(parts, "  >  "))
+	addon.RequestItemDisplay(itemId, function(itemDisplay)
+		callback(itemDisplay .. ": " .. tierText)
+	end)
+end
+
+function addon.PrintPriorityForItemId(itemId)
+	addon.GetPriorityMessageForItemId(itemId, function(message, err)
+		if not message then
+			print("|cFFFF0000PityRoll:|r " .. err)
+			return
+		end
+
+		print(message)
+	end)
 end

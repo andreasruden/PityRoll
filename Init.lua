@@ -123,14 +123,7 @@ local icon = LDB and LDB:NewDataObject("PityRoll", {
 	end,
 })
 
-local function HandleWhisperCommand(message, sender)
-	sender = sender:match("([^-]+)")
-
-	local lowerMsg = message:lower():trim()
-	if lowerMsg ~= "!pity" then
-		return
-	end
-
+local function IsWhisperRateLimited()
 	local currentTime = GetTime()
 	local windowStart = currentTime - Constants.RATE_LIMIT_WINDOW
 
@@ -143,19 +136,45 @@ local function HandleWhisperCommand(message, sender)
 	State.whisperTimestamps = newTimestamps
 
 	if #State.whisperTimestamps >= Constants.MAX_WHISPERS_PER_WINDOW then
-		return
+		return true
 	end
 
 	table.insert(State.whisperTimestamps, currentTime)
+	return false
+end
 
-	local normalizedName = sender:sub(1,1):upper() .. sender:sub(2):lower()
+local function HandleWhisperCommand(message, sender)
+	sender = sender:match("([^-]+)")
 
-	local pityValue = PityRollDB.players[normalizedName]
+	local lowerMsg = message:lower():trim()
 
-	if pityValue then
-		SendChatMessage(normalizedName .. "'s current pity: " .. pityValue .. "/" .. Constants.MAX_PITY, "WHISPER", nil, sender)
-	else
-		SendChatMessage(normalizedName .. " is not in the PityRoll database yet.", "WHISPER", nil, sender)
+	if lowerMsg == "!pity" then
+		if IsWhisperRateLimited() then
+			return
+		end
+
+		local normalizedName = sender:sub(1,1):upper() .. sender:sub(2):lower()
+
+		local pityValue = PityRollDB.players[normalizedName]
+
+		if pityValue then
+			SendChatMessage(normalizedName .. "'s current pity: " .. pityValue .. "/" .. Constants.MAX_PITY, "WHISPER", nil, sender)
+		else
+			SendChatMessage(normalizedName .. " is not in the PityRoll database yet.", "WHISPER", nil, sender)
+		end
+	elseif lowerMsg:match("^!prio%s") then
+		local itemId = tonumber(message:match("item:(%d+)"))
+		if not itemId then
+			return
+		end
+
+		if IsWhisperRateLimited() then
+			return
+		end
+
+		addon.GetPriorityMessageForItemId(itemId, function(response, err)
+			SendChatMessage(response or err, "WHISPER", nil, sender)
+		end)
 	end
 end
 
@@ -320,6 +339,9 @@ local function OnEvent(self, event, ...)
 	elseif event == "CHAT_MSG_WHISPER" then
 		local message, sender = ...
 		HandleWhisperCommand(message, sender)
+	elseif event == "GET_ITEM_INFO_RECEIVED" then
+		local itemId = ...
+		addon.OnItemInfoReceived(itemId)
 	elseif event == "CHAT_MSG_ADDON" then
 		local prefix, message, channel, sender = ...
 		if prefix == Constants.ADDON_PREFIX then
@@ -344,6 +366,7 @@ addon.Frames.eventFrame:RegisterEvent("ADDON_LOADED")
 addon.Frames.eventFrame:RegisterEvent("PLAYER_LOGIN")
 addon.Frames.eventFrame:RegisterEvent("CHAT_MSG_WHISPER")
 addon.Frames.eventFrame:RegisterEvent("CHAT_MSG_ADDON")
+addon.Frames.eventFrame:RegisterEvent("GET_ITEM_INFO_RECEIVED")
 addon.Frames.eventFrame:SetScript("OnEvent", OnEvent)
 
 -- Chat filter to modify roll messages with pity bonus
