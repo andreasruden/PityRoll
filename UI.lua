@@ -40,26 +40,17 @@ function addon.UpdateButtonFrameButtons()
 	end
 
 	if addon.Frames.pityRollFrame and addon.Frames.pityRollFrame:IsShown() then
-		addon.Frames.buttonFrame.newButton:SetText("Abort")
-		addon.Frames.buttonFrame.newButton:Enable()
+		addon.Frames.buttonFrame.abortButton:Show()
+		addon.Frames.buttonFrame.abortButton:Enable()
 
 		if State.tieResolutionMode and not State.selectedWinner then
 			addon.Frames.buttonFrame.finishButton:Disable()
 		else
 			addon.Frames.buttonFrame.finishButton:Enable()
 		end
-
-		addon.Frames.buttonFrame.awardDirectlyButton:Disable()
 	else
-		addon.Frames.buttonFrame.newButton:SetText("New Item")
-		addon.Frames.buttonFrame.newButton:Enable()
+		addon.Frames.buttonFrame.abortButton:Hide()
 		addon.Frames.buttonFrame.finishButton:Disable()
-
-		if State.currentBossSession.isActive and #State.currentBossSession.lootItems > 0 then
-			addon.Frames.buttonFrame.awardDirectlyButton:Enable()
-		else
-			addon.Frames.buttonFrame.awardDirectlyButton:Disable()
-		end
 	end
 end
 
@@ -124,7 +115,7 @@ function addon.CreateButtonFrame()
 	end
 
 	addon.Frames.buttonFrame = CreateFrame("Frame", "PityRollButtonFrame", UIParent)
-	addon.Frames.buttonFrame:SetSize(410, 30)
+	addon.Frames.buttonFrame:SetSize(310, 30)
 
 	if PityRollDB.buttonFramePosition then
 		local pos = PityRollDB.buttonFramePosition
@@ -146,24 +137,21 @@ function addon.CreateButtonFrame()
 		SaveButtonFramePosition()
 	end)
 
-	local newButton = CreateFrame("Button", nil, addon.Frames.buttonFrame, "UIPanelButtonTemplate")
-	newButton:SetSize(90, 25)
-	newButton:SetPoint("CENTER", addon.Frames.buttonFrame, "CENTER", -150, 0)
-	newButton:SetText("New Item")
-	newButton:SetScript("OnClick", function()
-		if addon.Frames.pityRollFrame and addon.Frames.pityRollFrame:IsShown() then
-			addon.EndSession()
-			print("|cFF00FF00PityRoll|r: Roll session aborted")
-		else
-			addon.NewRollSession()
-		end
+	local abortButton = CreateFrame("Button", nil, addon.Frames.buttonFrame, "UIPanelButtonTemplate")
+	abortButton:SetSize(90, 25)
+	abortButton:SetPoint("CENTER", addon.Frames.buttonFrame, "CENTER", -100, 0)
+	abortButton:SetText("Abort")
+	abortButton:Hide()
+	abortButton:SetScript("OnClick", function()
+		addon.EndSession()
+		print("|cFF00FF00PityRoll|r: Roll session aborted")
 	end)
 
-	addon.Frames.buttonFrame.newButton = newButton
+	addon.Frames.buttonFrame.abortButton = abortButton
 
 	local finishButton = CreateFrame("Button", nil, addon.Frames.buttonFrame, "UIPanelButtonTemplate")
 	finishButton:SetSize(90, 25)
-	finishButton:SetPoint("CENTER", addon.Frames.buttonFrame, "CENTER", -50, 0)
+	finishButton:SetPoint("CENTER", addon.Frames.buttonFrame, "CENTER", 0, 0)
 	finishButton:SetText("Award Item")
 	finishButton:SetScript("OnClick", function()
 		addon.FinishRollSession(nil)
@@ -171,27 +159,9 @@ function addon.CreateButtonFrame()
 
 	addon.Frames.buttonFrame.finishButton = finishButton
 
-	local awardDirectlyButton = CreateFrame("Button", nil, addon.Frames.buttonFrame, "UIPanelButtonTemplate")
-	awardDirectlyButton:SetSize(90, 25)
-	awardDirectlyButton:SetPoint("CENTER", addon.Frames.buttonFrame, "CENTER", 50, 0)
-	awardDirectlyButton:SetText("Award Directly")
-	awardDirectlyButton:Disable()
-	awardDirectlyButton:SetScript("OnClick", function()
-		addon.ShowItemSelectionDialogWithCallback(function(itemLink, itemName)
-			addon.ShowPlayerSelectionDialog({
-				title = "Award " .. itemLink,
-				buttonLabel = "Give Item",
-				onConfirm = function(playerName)
-					addon.ExecuteDirectAward(itemLink, itemName, playerName)
-				end,
-			})
-		end)
-	end)
-	addon.Frames.buttonFrame.awardDirectlyButton = awardDirectlyButton
-
 	local endBossButton = CreateFrame("Button", nil, addon.Frames.buttonFrame, "UIPanelButtonTemplate")
 	endBossButton:SetSize(90, 25)
-	endBossButton:SetPoint("CENTER", addon.Frames.buttonFrame, "CENTER", 150, 0)
+	endBossButton:SetPoint("CENTER", addon.Frames.buttonFrame, "CENTER", 100, 0)
 	endBossButton:SetText("End Boss")
 	endBossButton:SetScript("OnClick", function()
 		addon.BossEndSession()
