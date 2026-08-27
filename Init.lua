@@ -106,7 +106,7 @@ local icon = LDB and LDB:NewDataObject("PityRoll", {
 				print("|cFF00FF00PityRoll:|r Boss encounter already active")
 				return
 			end
-			addon.BossBeginSession()
+			addon.ShowBossBeginDialog()
 		elseif button == "RightButton" then
 			local menuTable = GetMinimapMenuTable()
 			LibDD:EasyMenu(menuTable, minimapMenuFrame, "cursor", 0, 0, "MENU", 2)
@@ -444,7 +444,7 @@ SlashCmdList["PITYROLL"] = function(msg)
 		end
 	elseif lowerMsg == "abort" then
 		if addon.Frames.pityRollFrame then
-			addon.EndSession()
+			addon.AbortRollSession()
 			print("|cFF00FF00PityRoll|r: Frame closed")
 		else
 			print("|cFF00FF00PityRoll|r: No frame is currently open")
@@ -452,8 +452,13 @@ SlashCmdList["PITYROLL"] = function(msg)
 	elseif lowerMsg:match("^finish") then
 		local winnerName = msg:match("^finish%s+(.+)")
 		addon.FinishRollSession(winnerName)
-	elseif lowerMsg == "bossbegin" then
-		addon.BossBeginSession()
+	elseif lowerMsg == "bossbegin" or lowerMsg:match("^bossbegin%s+") then
+		local name = msg:match("^bossbegin%s+(.+)")
+		if not name and UnitExists("target") then
+			local targetName = UnitName("target")
+			name = targetName and (targetName:match("([^-]+)") or targetName) or nil
+		end
+		addon.BossBeginSession(name)
 	elseif lowerMsg == "bossend" then
 		addon.BossEndSession()
 	elseif lowerMsg == "report" then

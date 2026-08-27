@@ -4,17 +4,24 @@ local State = addon.State
 local LibDD = LibStub:GetLibrary("LibUIDropDownMenu-4.0")
 local itemClickMenuFrame = LibDD:Create_UIDropDownMenu("PityRollItemClickMenuFrame", UIParent)
 
+local function AddItemToBossSession(itemLink, itemName)
+	for _, existingLink in ipairs(State.currentBossSession.lootItems) do
+		if existingLink == itemLink then
+			return
+		end
+	end
+
+	table.insert(State.currentBossSession.lootItems, itemLink)
+	table.insert(State.currentBossSession.itemNames, itemName)
+end
+
 local function RollItemAction(itemLink, itemName)
 	if not State.currentBossSession.isActive then
 		print("|cFFFF0000Error:|r No active boss session. Use /pr bossbegin first.")
 		return
 	end
 
-	if #State.currentBossSession.lootItems == 0 then
-		print("|cFFFF0000Error:|r No items available. All items have been awarded or use /pr bossend to finish.")
-		return
-	end
-
+	AddItemToBossSession(itemLink, itemName)
 	addon.StartRollSessionWithItem(itemLink, itemName)
 end
 
@@ -24,11 +31,7 @@ local function AwardDirectlyAction(itemLink, itemName)
 		return
 	end
 
-	if #State.currentBossSession.lootItems == 0 then
-		print("|cFFFF0000Error:|r No items available. All items have been awarded or use /pr bossend to finish.")
-		return
-	end
-
+	AddItemToBossSession(itemLink, itemName)
 	addon.ShowPlayerSelectionDialog({
 		title = "Award " .. itemLink,
 		buttonLabel = "Give Item",

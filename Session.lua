@@ -31,6 +31,24 @@ function addon.EndSession()
 	end
 end
 
+function addon.AbortRollSession()
+	local itemLink = State.currentRollItemLink
+	addon.EndSession()
+
+	if itemLink then
+		for i = #State.currentBossSession.lootItems, 1, -1 do
+			if State.currentBossSession.lootItems[i] == itemLink then
+				table.remove(State.currentBossSession.lootItems, i)
+				table.remove(State.currentBossSession.itemNames, i)
+				break
+			end
+		end
+	end
+
+	State.currentRollItemLink = nil
+	State.currentRollItemName = nil
+end
+
 local function DetectTie(results)
 	if #results < 2 then return nil end
 
@@ -329,48 +347,57 @@ function addon.ExecuteDirectAward(itemLink, itemName, playerName)
 	addon.UpdateButtonFrameButtons()
 end
 
-function addon.CaptureBossLootData()
-	if not UnitExists("target") then
-		return false, "You must target a mob to start a boss session"
-	end
+local pendingBossBeginName = ""
 
-	local numLootItems = GetNumLootItems()
-	if numLootItems == 0 then
-		return false, "You must open the loot window first (right-click the boss corpse)"
-	end
-
-	local bossName = UnitName("target")
-	if not bossName then
-		return false, "Unable to read target name"
-	end
-
-	bossName = bossName:match("([^-]+)") or bossName
-	local bossGuid = UnitGUID("target")
-
-	State.currentBossSession.bossName = bossName
-	State.currentBossSession.bossGuid = bossGuid
-	State.currentBossSession.lootItems = {}
-	State.currentBossSession.itemNames = {}
-	State.currentBossSession.startTime = time()
-	State.currentBossSession.isActive = true
-
-	for slot = 1, numLootItems do
-		local itemLink = GetLootSlotLink(slot)
-		local slotType = GetLootSlotType(slot)
-
-		if itemLink and slotType == LOOT_SLOT_ITEM then
-			table.insert(State.currentBossSession.lootItems, itemLink)
-			local itemName = GetItemInfo(itemLink)
-			if itemName then
-				table.insert(State.currentBossSession.itemNames, itemName)
-			end
+StaticPopupDialogs["PITYROLL_START_BOSS_SESSION"] = {
+	text = "Start boss session for:",
+	button1 = "Accept",
+	button2 = "Cancel",
+	hasEditBox = true,
+	maxLetters = 50,
+	OnShow = function(self)
+		local editBox = self.editBox or _G[self:GetName() .. "EditBox"]
+		editBox:SetText(pendingBossBeginName)
+		editBox:HighlightText()
+		editBox:SetFocus()
+	end,
+	OnAccept = function(self)
+		local editBox = self.editBox or _G[self:GetName() .. "EditBox"]
+		local name = editBox:GetText():trim()
+		if name == "" then
+			print("|cFFFF0000Error:|r Boss name cannot be empty")
+			return
 		end
-	end
+		addon.BossBeginSession(name)
+	end,
+	EditBoxOnEnterPressed = function(self)
+		local name = self:GetText():trim()
+		if name == "" then
+			print("|cFFFF0000Error:|r Boss name cannot be empty")
+			return
+		end
+		addon.BossBeginSession(name)
+		self:GetParent():Hide()
+	end,
+	EditBoxOnEscapePressed = function(self)
+		self:GetParent():Hide()
+	end,
+	timeout = 0,
+	whileDead = true,
+	hideOnEscape = true,
+	preferredIndex = 3,
+}
 
-	return true, nil
+function addon.ShowBossBeginDialog()
+	pendingBossBeginName = ""
+	if UnitExists("target") then
+		local targetName = UnitName("target")
+		pendingBossBeginName = targetName and (targetName:match("([^-]+)") or targetName) or ""
+	end
+	StaticPopup_Show("PITYROLL_START_BOSS_SESSION")
 end
 
-function addon.BossBeginSession()
+function addon.BossBeginSession(bossName)
 	if not IsInRaid() and not IsInGroup() then
 		print("|cFFFF0000Error:|r You must be in a party or raid to use /pr bossbegin")
 		return
@@ -381,68 +408,23 @@ function addon.BossBeginSession()
 		return
 	end
 
-	local success, errorMsg = addon.CaptureBossLootData()
-	if not success then
-		print("|cFFFF0000Error:|r " .. errorMsg)
+	if not bossName or bossName:trim() == "" then
+		print("|cFFFF0000Error:|r Boss name cannot be empty")
 		return
 	end
+
+	State.currentBossSession.bossName = bossName
+	State.currentBossSession.bossGuid = nil
+	State.currentBossSession.lootItems = {}
+	State.currentBossSession.itemNames = {}
+	State.currentBossSession.startTime = time()
+	State.currentBossSession.isActive = true
 
 	State.hasFinishedRollSession = false
 	addon.CreateButtonFrame()
 	addon.UpdateButtonFrameButtons()
 
-	local itemCount = #State.currentBossSession.lootItems
-	local bossName = State.currentBossSession.bossName
-	print("|cFF00FF00PityRoll:|r Boss encounter started for " .. bossName .. " (" .. itemCount .. " items)")
-
-	if itemCount > 0 then
-		print("|cFF00FF00PityRoll:|r Dropped items:")
-		for i, itemName in ipairs(State.currentBossSession.itemNames) do
-			print("  " .. i .. ". " .. itemName)
-		end
-	end
-end
-
-local function FormatItemList(itemNames, limit)
-	local displayItems = {}
-	for i = 1, math.min(#itemNames, limit) do
-		table.insert(displayItems, "  - " .. itemNames[i])
-	end
-
-	if #itemNames > limit then
-		table.insert(displayItems, "  - and " .. (#itemNames - limit) .. " more...")
-	end
-
-	return table.concat(displayItems, "\n")
-end
-
-local function CheckUndistributedItemsBeforeEndBoss(onConfirm)
-	if #State.currentBossSession.lootItems == 0 then
-		onConfirm()
-		return
-	end
-
-	local itemCount = #State.currentBossSession.itemNames
-	local itemList = FormatItemList(State.currentBossSession.itemNames, 5)
-
-	local message = "There are " .. itemCount .. " undistributed item(s) remaining:\n\n" ..
-		itemList .. "\n\n" ..
-		"Ending the boss session will forfeit these items. Are you sure?"
-
-	StaticPopupDialogs["PITYROLL_END_BOSS_CONFIRM"] = {
-		text = message,
-		button1 = "End Anyway",
-		button2 = "Cancel",
-		OnAccept = function()
-			onConfirm()
-		end,
-		timeout = 0,
-		whileDead = true,
-		hideOnEscape = true,
-		preferredIndex = 3,
-	}
-
-	StaticPopup_Show("PITYROLL_END_BOSS_CONFIRM")
+	print("|cFF00FF00PityRoll:|r Boss encounter started for " .. bossName)
 end
 
 local function BossEndSessionInternal()
@@ -496,7 +478,7 @@ local function BossEndSessionInternal()
 end
 
 function addon.BossEndSession()
-	CheckUndistributedItemsBeforeEndBoss(BossEndSessionInternal)
+	BossEndSessionInternal()
 end
 
 local function EndBossNoPityInternal()
@@ -528,5 +510,5 @@ local function EndBossNoPityInternal()
 end
 
 function addon.EndBossNoPity()
-	CheckUndistributedItemsBeforeEndBoss(EndBossNoPityInternal)
+	EndBossNoPityInternal()
 end

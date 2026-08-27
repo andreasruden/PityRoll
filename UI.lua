@@ -143,7 +143,7 @@ function addon.CreateButtonFrame()
 	abortButton:SetText("Abort")
 	abortButton:Hide()
 	abortButton:SetScript("OnClick", function()
-		addon.EndSession()
+		addon.AbortRollSession()
 		print("|cFF00FF00PityRoll|r: Roll session aborted")
 	end)
 
