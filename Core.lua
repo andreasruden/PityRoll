@@ -45,6 +45,7 @@ addon.State = {
 	selectedWinner = nil,
 	observedPity = {},
 	whisperTimestamps = {},
+	announcedLootSources = {},
 	currentBossSession = {
 		bossName = nil,
 		bossGuid = nil,
@@ -178,6 +179,12 @@ end
 
 function addon.AnnounceRareDrops()
 	if not IsInGroup() or not UnitIsGroupLeader("player") then return end
+
+	local sourceGuid = select(1, GetLootSourceInfo(1))
+	if sourceGuid then
+		if addon.State.announcedLootSources[sourceGuid] then return end
+		addon.State.announcedLootSources[sourceGuid] = true
+	end
 
 	for slot = 1, GetNumLootItems() do
 		if GetLootSlotType(slot) == LOOT_SLOT_ITEM then
