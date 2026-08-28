@@ -30,6 +30,11 @@ function addon.EndSession()
 		State.playerRolls = {}
 	end
 
+	if State.currentRollIsNoPity then
+		State.currentRollIsNoPity = false
+		addon.BroadcastNoPityFlag(false)
+	end
+
 	if not State.currentBossSession.isActive then
 		addon.HideButtonFrame()
 	end
@@ -267,7 +272,7 @@ function addon.FinishRollSession(specifiedWinner)
 	end
 
 	for playerName, rollData in pairs(State.playerRolls) do
-		if playerName ~= winner.name and not rollData.ignored and not rollData.nonStandardRoll then
+		if playerName ~= winner.name and not rollData.ignored and not rollData.nonStandardRoll and not State.currentRollIsNoPity then
 			local oldPity = PityRollDB.players[playerName] or 0
 			local newPity = oldPity + Constants.PITY_INCREMENT
 			local cappedPity = math.min(newPity, Constants.MAX_PITY)
@@ -276,7 +281,7 @@ function addon.FinishRollSession(specifiedWinner)
 		end
 	end
 
-	local winnerIsNonStandard = State.playerRolls[winner.name].nonStandardRoll
+	local winnerIsNonStandard = State.playerRolls[winner.name].nonStandardRoll or State.currentRollIsNoPity
 	if not winnerIsNonStandard then
 		local oldPity = PityRollDB.players[winner.name] or 0
 		PityRollDB.players[winner.name] = 0
@@ -313,14 +318,16 @@ function addon.NewRollSession()
 	addon.ShowItemSelectionDialog()
 end
 
-function addon.StartRollSessionWithItem(itemLink, itemName)
+function addon.StartRollSessionWithItem(itemLink, itemName, noPity)
 	State.currentRollItemLink = itemLink
 	State.currentRollItemName = itemName
-	addon.AnnounceRollItem(itemLink)
+	State.currentRollIsNoPity = noPity or false
+	addon.AnnounceRollItem(itemLink, noPity)
 	addon.CreateButtonFrame()
 	addon.CreatePityRollFrame()
 	addon.UpdateButtonFrameButtons()
 	addon.BroadcastPityData()
+	addon.BroadcastNoPityFlag(noPity or false)
 end
 
 function addon.ExecuteDirectAward(itemLink, itemName, playerName)

@@ -53,7 +53,8 @@ addon.State = {
 		isActive = false
 	},
 	currentRollItemLink = nil,
-	currentRollItemName = nil
+	currentRollItemName = nil,
+	currentRollIsNoPity = false
 }
 
 -- Frames
@@ -152,8 +153,13 @@ function addon.WriteToChat(message)
 	end
 end
 
-function addon.AnnounceRollItem(itemLink)
-	local message = "Rolling for " .. itemLink .. ". If this matches your Main Spec, type /roll to use your pity or /roll 99 to ignore pity."
+function addon.AnnounceRollItem(itemLink, noPity)
+	local message
+	if noPity then
+		message = "Rolling for " .. itemLink .. ". Roll 100 for Main Spec or 99 for Off Spec."
+	else
+		message = "Rolling for " .. itemLink .. ". If this matches your Main Spec, type /roll to use your pity or /roll 99 to ignore pity."
+	end
 	if IsInRaid() then
 		if UnitIsGroupLeader("player") or UnitIsGroupAssistant("player") then
 			SendChatMessage(message, "RAID_WARNING")

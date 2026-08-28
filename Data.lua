@@ -27,6 +27,12 @@ function addon.BroadcastClear()
 	ChatThrottleLib:SendAddonMessage("NORMAL", Constants.ADDON_PREFIX, "CLEAR", channel)
 end
 
+function addon.BroadcastNoPityFlag(isNoPity)
+	local channel = addon.GetGroupChannel()
+	if not channel then return end
+	ChatThrottleLib:SendAddonMessage("NORMAL", Constants.ADDON_PREFIX, isNoPity and "NOPITY_ON" or "NOPITY_OFF", channel)
+end
+
 function addon.ReportPityValues()
 	local allMembers = addon.GetAllGroupMembers()
 

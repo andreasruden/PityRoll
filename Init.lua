@@ -219,7 +219,7 @@ local function HandleSystemMessage(message)
 
 	print("|cFF00FF00PityRoll DEBUG:|r Found class: " .. className .. " for " .. playerName)
 	local isNonStandard = maxRoll ~= 100
-	rollBonus = isNonStandard and 0 or (PityRollDB.players[playerName] or 0)
+	rollBonus = (isNonStandard or State.currentRollIsNoPity) and 0 or (PityRollDB.players[playerName] or 0)
 
 	-- Auto-ignore a /roll 99 if any active pity roll already exists
 	local startIgnored = false
@@ -347,6 +347,10 @@ local function OnEvent(self, event, ...)
 		if prefix == Constants.ADDON_PREFIX then
 			if message == "CLEAR" then
 				State.observedPity = {}
+			elseif message == "NOPITY_ON" then
+				State.currentRollIsNoPity = true
+			elseif message == "NOPITY_OFF" then
+				State.currentRollIsNoPity = false
 			elseif message:sub(1, 10) == "PITYBATCH:" then
 				for entry in message:sub(11):gmatch("[^,]+") do
 					local name, value = entry:match("^(.+):(%d+)$")
@@ -373,6 +377,10 @@ addon.Frames.eventFrame:SetScript("OnEvent", OnEvent)
 ChatFrame_AddMessageEventFilter("CHAT_MSG_SYSTEM", function(self, event, message, ...)
 	-- Only process if pity frame visible or using follower mode
 	if not (addon.Frames.pityRollFrame and addon.Frames.pityRollFrame:IsShown()) and next(State.observedPity) == nil then
+		return false
+	end
+
+	if State.currentRollIsNoPity then
 		return false
 	end
 

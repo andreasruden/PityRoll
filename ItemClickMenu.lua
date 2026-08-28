@@ -22,6 +22,13 @@ local function RollItemAction(itemLink, itemName)
 	addon.StartRollSessionWithItem(itemLink, itemName)
 end
 
+local function RollItemNoPityAction(itemLink, itemName)
+	if State.currentBossSession.isActive then
+		AddItemToBossSession(itemLink, itemName)
+	end
+	addon.StartRollSessionWithItem(itemLink, itemName, true)
+end
+
 local function AwardDirectlyAction(itemLink, itemName)
 	if State.currentBossSession.isActive then
 		AddItemToBossSession(itemLink, itemName)
@@ -45,6 +52,11 @@ local function ShowItemClickMenu(itemLink, itemName)
 		{
 			text = "Award Directly",
 			func = function() AwardDirectlyAction(itemLink, itemName) end,
+			notCheckable = true,
+		},
+		{
+			text = "Roll Without Pity",
+			func = function() RollItemNoPityAction(itemLink, itemName) end,
 			notCheckable = true,
 		},
 	}
