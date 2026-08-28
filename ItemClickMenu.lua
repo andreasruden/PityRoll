@@ -16,22 +16,16 @@ local function AddItemToBossSession(itemLink, itemName)
 end
 
 local function RollItemAction(itemLink, itemName)
-	if not State.currentBossSession.isActive then
-		print("|cFFFF0000Error:|r No active boss session. Use /pr bossbegin first.")
-		return
+	if State.currentBossSession.isActive then
+		AddItemToBossSession(itemLink, itemName)
 	end
-
-	AddItemToBossSession(itemLink, itemName)
 	addon.StartRollSessionWithItem(itemLink, itemName)
 end
 
 local function AwardDirectlyAction(itemLink, itemName)
-	if not State.currentBossSession.isActive then
-		print("|cFFFF0000Error:|r No active boss session. Use /pr bossbegin first.")
-		return
+	if State.currentBossSession.isActive then
+		AddItemToBossSession(itemLink, itemName)
 	end
-
-	AddItemToBossSession(itemLink, itemName)
 	addon.ShowPlayerSelectionDialog({
 		title = "Award " .. itemLink,
 		buttonLabel = "Give Item",

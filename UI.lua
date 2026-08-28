@@ -52,6 +52,12 @@ function addon.UpdateButtonFrameButtons()
 		addon.Frames.buttonFrame.abortButton:Hide()
 		addon.Frames.buttonFrame.finishButton:Disable()
 	end
+
+	if State.currentBossSession.isActive then
+		addon.Frames.buttonFrame.endBossButton:Show()
+	else
+		addon.Frames.buttonFrame.endBossButton:Hide()
+	end
 end
 
 function addon.CreatePityRollFrame()

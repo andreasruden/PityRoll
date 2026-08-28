@@ -21,7 +21,7 @@ local function BuildLosersArray(allResults, winner)
 end
 
 local function FindCurrentEncounter()
-    if not State.currentBossSession or not State.currentBossSession.startTime then
+    if not State.currentBossSession or not State.currentBossSession.isActive then
         return nil
     end
 
@@ -89,11 +89,9 @@ function addon.RecordHistoryEntry(bossName, itemLink, itemName, winner, allResul
     -- Find or create encounter
     local encounter = FindCurrentEncounter()
     if not encounter then
-        if not State.currentBossSession or not State.currentBossSession.startTime then
-            print("|cFFFF0000PityRoll History:|r Cannot record entry - no active boss session")
-            return
-        end
-        encounter = CreateNewEncounter(bossName, State.currentBossSession.startTime)
+        local timestamp = (State.currentBossSession and State.currentBossSession.isActive)
+            and State.currentBossSession.startTime or time()
+        encounter = CreateNewEncounter(bossName, timestamp)
     end
 
     -- Build losers array

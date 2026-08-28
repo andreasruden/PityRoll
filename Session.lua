@@ -29,6 +29,10 @@ function addon.EndSession()
 		addon.Frames.eventFrame:UnregisterEvent("CHAT_MSG_SYSTEM")
 		State.playerRolls = {}
 	end
+
+	if not State.currentBossSession.isActive then
+		addon.HideButtonFrame()
+	end
 end
 
 function addon.AbortRollSession()
@@ -241,8 +245,11 @@ function addon.FinishRollSession(specifiedWinner)
 		print("|cFF00FF00PityRoll:|r " .. awardedItemName .. " awarded to " .. winner.name)
 
 		-- Record history entry
+		local historyBossName = State.currentBossSession.isActive
+			and State.currentBossSession.bossName
+			or Constants.TRASH_LOOT_NAME
 		addon.RecordHistoryEntry(
-			State.currentBossSession.bossName,
+			historyBossName,
 			awardedItemLink,
 			awardedItemName,
 			winner,
@@ -310,6 +317,7 @@ function addon.StartRollSessionWithItem(itemLink, itemName)
 	State.currentRollItemLink = itemLink
 	State.currentRollItemName = itemName
 	addon.AnnounceRollItem(itemLink)
+	addon.CreateButtonFrame()
 	addon.CreatePityRollFrame()
 	addon.UpdateButtonFrameButtons()
 	addon.BroadcastPityData()
@@ -329,8 +337,11 @@ function addon.ExecuteDirectAward(itemLink, itemName, playerName)
 	end
 
 	local winner = { name = playerName, rollValue = 0, rollBonus = 0, total = 0 }
+	local historyBossName = State.currentBossSession.isActive
+		and State.currentBossSession.bossName
+		or Constants.TRASH_LOOT_NAME
 	addon.RecordHistoryEntry(
-		State.currentBossSession.bossName,
+		historyBossName,
 		itemLink,
 		itemName,
 		winner,

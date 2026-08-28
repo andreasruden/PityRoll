@@ -7,6 +7,7 @@ addon.Constants = {
 	PITY_INCREMENT = 5,
 	BOSS_PITY = 2,
 	ADDON_PREFIX = "PityRoll",
+	TRASH_LOOT_NAME = "Trash Loot",
 
 	-- Rate limiting configuration
 	MAX_WHISPERS_PER_WINDOW = 5,

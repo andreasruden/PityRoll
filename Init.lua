@@ -48,7 +48,7 @@ local function GetMinimapMenuTable()
 		end
 	end
 
-	if addon.Frames.buttonFrame and addon.Frames.buttonFrame:IsShown() then
+	if State.currentBossSession.isActive then
 		table.insert(menuTable, {
 			text = "End Boss (no boss pity)",
 			func = function()
@@ -102,7 +102,7 @@ local icon = LDB and LDB:NewDataObject("PityRoll", {
 	icon = "Interface\\Buttons\\UI-GroupLoot-Dice-Up",
 	OnClick = function(self, button)
 		if button == "LeftButton" then
-			if addon.Frames.buttonFrame and addon.Frames.buttonFrame:IsShown() then
+			if State.currentBossSession.isActive then
 				print("|cFF00FF00PityRoll:|r Boss encounter already active")
 				return
 			end
@@ -117,7 +117,7 @@ local icon = LDB and LDB:NewDataObject("PityRoll", {
 		tooltip:AddLine("PityRoll")
 		tooltip:AddLine("|cFFFFFFFFLeft-click:|r Start boss encounter")
 		tooltip:AddLine("|cFFFFFFFFRight-click:|r Show menu")
-		if addon.Frames.buttonFrame and addon.Frames.buttonFrame:IsShown() then
+		if State.currentBossSession.isActive then
 			tooltip:AddLine("|cFF00FF00Boss encounter active|r")
 		end
 	end,
