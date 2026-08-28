@@ -159,7 +159,7 @@ function addon.SetRoll(characterName, newRollValue)
 	characterName = characterName:sub(1,1):upper() .. characterName:sub(2):lower()
 
 	if not addon.Frames.pityRollFrame or not addon.Frames.pityRollFrame:IsShown() then
-		print("|cFFFF0000Error:|r Pity frame must be open to modify rolls. Use /pr new first.")
+		print("|cFFFF0000Error:|r Pity frame must be open to modify rolls. Roll an item first.")
 		return
 	end
 

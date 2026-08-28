@@ -421,7 +421,6 @@ SlashCmdList["PITYROLL"] = function(msg)
 		print("|cFF00FF00PityRoll|r Commands:")
 		print("/pityroll help - Show this help message")
 		print("/pityroll version - Show addon version")
-		print("/pityroll new - Open PityRoll frame")
 		print("/pityroll add <class> <name> <roll> <bonus> - Add a player's roll to the grid")
 		print("/pityroll finish [PlayerName] - Finish roll session and show sorted results (specify winner if tied)")
 		print("/pityroll bossbegin - Show button frame for boss encounter")
@@ -436,8 +435,6 @@ SlashCmdList["PITYROLL"] = function(msg)
 		print("/pityroll abort - Close the PityRoll frame")
 	elseif lowerMsg == "version" then
 		print("|cFF00FF00PityRoll|r version: " .. (PityRollDB.version or "1.0.0"))
-	elseif lowerMsg == "new" then
-		addon.NewRollSession()
 	elseif lowerMsg:match("^add%s+") then
 		local args = {}
 		for arg in msg:gmatch("%S+") do

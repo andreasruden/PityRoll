@@ -21,7 +21,6 @@ Session.lua
 History.lua
 Sync.lua
 UI.lua
-ItemSelection.lua
 PlayerSelection.lua
 ItemClickMenu.lua
 Init.lua

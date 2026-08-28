@@ -304,20 +304,6 @@ function addon.FinishRollSession(specifiedWinner)
 	addon.EndSession()
 end
 
-function addon.NewRollSession()
-	if not State.currentBossSession.isActive then
-		print("|cFFFF0000Error:|r No active boss session. Use /pr bossbegin first.")
-		return
-	end
-
-	if #State.currentBossSession.lootItems == 0 then
-		print("|cFFFF0000Error:|r No items available. All items have been awarded or use /pr bossend to finish.")
-		return
-	end
-
-	addon.ShowItemSelectionDialog()
-end
-
 function addon.StartRollSessionWithItem(itemLink, itemName, noPity)
 	State.currentRollItemLink = itemLink
 	State.currentRollItemName = itemName
