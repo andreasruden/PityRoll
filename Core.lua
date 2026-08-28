@@ -147,6 +147,11 @@ function addon.GetAllGroupMembers()
 	return members
 end
 
+function addon.CanAnnounce()
+	if IsMasterLooter() then return true end
+	return GetLootMethod() ~= "master" and UnitIsGroupLeader("player")
+end
+
 function addon.WriteToChat(message)
 	if IsInRaid() then
 		SendChatMessage(message, "RAID")
@@ -180,7 +185,7 @@ function addon.AnnounceRollItem(itemLink, noPity)
 end
 
 function addon.AnnounceRareDrops()
-	if not IsInGroup() or not UnitIsGroupLeader("player") then return end
+	if not IsInGroup() or not addon.CanAnnounce() then return end
 
 	local sourceGuid = select(1, GetLootSourceInfo(1))
 	if sourceGuid then
@@ -209,7 +214,7 @@ function addon.SnapshotTradeItems()
 end
 
 function addon.AnnounceTrade()
-	if not IsInGroup() or not UnitIsGroupLeader("player") then return end
+	if not IsInGroup() or not addon.CanAnnounce() then return end
 	if not addon.State.tradePartner or not addon.State.tradeItems then return end
 
 	for _, link in ipairs(addon.State.tradeItems) do
