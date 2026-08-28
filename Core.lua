@@ -46,6 +46,8 @@ addon.State = {
 	observedPity = {},
 	whisperTimestamps = {},
 	announcedLootSources = {},
+	tradePartner = nil,
+	tradeItems = nil,
 	currentBossSession = {
 		bossName = nil,
 		bossGuid = nil,
@@ -195,6 +197,28 @@ function addon.AnnounceRareDrops()
 			end
 		end
 	end
+end
+
+function addon.SnapshotTradeItems()
+	local items = {}
+	for i = 1, MAX_TRADABLE_ITEMS do
+		local link = GetTradePlayerItemLink(i)
+		if link then table.insert(items, link) end
+	end
+	addon.State.tradeItems = items
+end
+
+function addon.AnnounceTrade()
+	if not IsInGroup() or not UnitIsGroupLeader("player") then return end
+	if not addon.State.tradePartner or not addon.State.tradeItems then return end
+
+	for _, link in ipairs(addon.State.tradeItems) do
+		local quality = select(3, GetItemInfo(link))
+		if quality and quality >= addon.Constants.ANNOUNCE_RARITY_THRESHOLD then
+			addon.WriteToChat("{square} Traded " .. link .. " to " .. addon.State.tradePartner .. ".")
+		end
+	end
+	addon.State.tradeItems = nil
 end
 
 function addon.AnnouncePriority(itemLink)

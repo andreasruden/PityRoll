@@ -260,6 +260,19 @@ end
 local function OnEvent(self, event, ...)
 	if event == "LOOT_OPENED" then
 		addon.AnnounceRareDrops()
+	elseif event == "TRADE_SHOW" then
+		addon.State.tradePartner = UnitName("NPC")
+		addon.State.tradeItems = nil
+	elseif event == "TRADE_ACCEPT_UPDATE" then
+		local playerAccepted = ...
+		if playerAccepted == 1 then
+			addon.SnapshotTradeItems()
+		end
+	elseif event == "UI_INFO_MESSAGE" then
+		local _, message = ...
+		if message == ERR_TRADE_COMPLETE then
+			addon.AnnounceTrade()
+		end
 	elseif event == "ADDON_LOADED" then
 		local name = ...
 		if name == addonName then
@@ -374,6 +387,9 @@ addon.Frames.eventFrame:RegisterEvent("CHAT_MSG_WHISPER")
 addon.Frames.eventFrame:RegisterEvent("CHAT_MSG_ADDON")
 addon.Frames.eventFrame:RegisterEvent("GET_ITEM_INFO_RECEIVED")
 addon.Frames.eventFrame:RegisterEvent("LOOT_OPENED")
+addon.Frames.eventFrame:RegisterEvent("TRADE_SHOW")
+addon.Frames.eventFrame:RegisterEvent("TRADE_ACCEPT_UPDATE")
+addon.Frames.eventFrame:RegisterEvent("UI_INFO_MESSAGE")
 addon.Frames.eventFrame:SetScript("OnEvent", OnEvent)
 
 -- Chat filter to modify roll messages with pity bonus
