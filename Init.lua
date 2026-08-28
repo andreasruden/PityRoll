@@ -258,7 +258,9 @@ local function HandleSystemMessage(message)
 end
 
 local function OnEvent(self, event, ...)
-	if event == "ADDON_LOADED" then
+	if event == "LOOT_OPENED" then
+		addon.AnnounceRareDrops()
+	elseif event == "ADDON_LOADED" then
 		local name = ...
 		if name == addonName then
 			print("|cFF00FF00PityRoll|r addon loaded!")
@@ -371,6 +373,7 @@ addon.Frames.eventFrame:RegisterEvent("PLAYER_LOGIN")
 addon.Frames.eventFrame:RegisterEvent("CHAT_MSG_WHISPER")
 addon.Frames.eventFrame:RegisterEvent("CHAT_MSG_ADDON")
 addon.Frames.eventFrame:RegisterEvent("GET_ITEM_INFO_RECEIVED")
+addon.Frames.eventFrame:RegisterEvent("LOOT_OPENED")
 addon.Frames.eventFrame:SetScript("OnEvent", OnEvent)
 
 -- Chat filter to modify roll messages with pity bonus

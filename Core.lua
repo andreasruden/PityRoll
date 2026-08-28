@@ -8,6 +8,7 @@ addon.Constants = {
 	BOSS_PITY = 2,
 	ADDON_PREFIX = "PityRoll",
 	TRASH_LOOT_NAME = "Trash Loot",
+	ANNOUNCE_RARITY_THRESHOLD = 4, -- ITEM_QUALITY_EPIC
 
 	-- Rate limiting configuration
 	MAX_WHISPERS_PER_WINDOW = 5,
@@ -173,6 +174,20 @@ function addon.AnnounceRollItem(itemLink, noPity)
 	end
 
 	addon.AnnouncePriority(itemLink)
+end
+
+function addon.AnnounceRareDrops()
+	if not IsInGroup() or not UnitIsGroupLeader("player") then return end
+
+	for slot = 1, GetNumLootItems() do
+		if GetLootSlotType(slot) == LOOT_SLOT_ITEM then
+			local link = GetLootSlotLink(slot)
+			local quality = link and select(3, GetItemInfo(link))
+			if quality and quality >= addon.Constants.ANNOUNCE_RARITY_THRESHOLD then
+				addon.WriteToChat("{star} Drop: " .. link .. " {star}")
+			end
+		end
+	end
 end
 
 function addon.AnnouncePriority(itemLink)
