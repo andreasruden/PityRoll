@@ -291,9 +291,10 @@ function addon.GetPriorityMessageForItemId(itemId, callback)
 		table.insert(parts, table.concat(tier, ", "))
 	end
 	local tierText = table.concat(parts, "  >  ")
+	local comment = tiers.comment
 
 	addon.RequestItemDisplay(itemId, function(itemDisplay)
-		callback(itemDisplay .. ": " .. tierText)
+		callback(itemDisplay .. ": " .. tierText, nil, comment)
 	end)
 end
 

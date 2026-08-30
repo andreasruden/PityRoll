@@ -172,8 +172,11 @@ local function HandleWhisperCommand(message, sender)
 			return
 		end
 
-		addon.GetPriorityMessageForItemId(itemId, function(response, err)
+		addon.GetPriorityMessageForItemId(itemId, function(response, err, comment)
 			SendChatMessage(response or err, "WHISPER", nil, sender)
+			if response and comment then
+				SendChatMessage(comment, "WHISPER", nil, sender)
+			end
 		end)
 	end
 end
