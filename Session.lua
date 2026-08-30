@@ -312,8 +312,7 @@ function addon.StartRollSessionWithItem(itemLink, itemName, noPity)
 	addon.CreateButtonFrame()
 	addon.CreatePityRollFrame()
 	addon.UpdateButtonFrameButtons()
-	addon.BroadcastPityData()
-	addon.BroadcastNoPityFlag(noPity or false)
+	addon.BroadcastPityData(noPity or false)
 end
 
 function addon.ExecuteDirectAward(itemLink, itemName, playerName)

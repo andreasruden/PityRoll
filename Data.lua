@@ -2,9 +2,18 @@ local addonName, addon = ...
 local Constants = addon.Constants
 local State = addon.State
 
-function addon.BroadcastPityData()
+function addon.BroadcastPityData(noPity)
 	local channel = addon.GetGroupChannel()
 	if not channel then return end
+
+	local flag = noPity and "1" or "0"
+
+	-- No-pity sessions never read pity values on the receiving end, so skip
+	-- sending them entirely.
+	if noPity then
+		ChatThrottleLib:SendAddonMessage("NORMAL", Constants.ADDON_PREFIX, "PITYBATCH:" .. flag .. ":", channel)
+		return
+	end
 
 	local entries = {}
 	for playerName, pityValue in pairs(PityRollDB.players) do
@@ -12,12 +21,17 @@ function addon.BroadcastPityData()
 	end
 
 	local BATCH_SIZE = 5
+	if #entries == 0 then
+		ChatThrottleLib:SendAddonMessage("NORMAL", Constants.ADDON_PREFIX, "PITYBATCH:" .. flag .. ":", channel)
+		return
+	end
+
 	for i = 1, #entries, BATCH_SIZE do
 		local batch = {}
 		for j = i, math.min(i + BATCH_SIZE - 1, #entries) do
 			table.insert(batch, entries[j])
 		end
-		ChatThrottleLib:SendAddonMessage("NORMAL", Constants.ADDON_PREFIX, "PITYBATCH:" .. table.concat(batch, ","), channel)
+		ChatThrottleLib:SendAddonMessage("NORMAL", Constants.ADDON_PREFIX, "PITYBATCH:" .. flag .. ":" .. table.concat(batch, ","), channel)
 	end
 end
 

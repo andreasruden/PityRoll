@@ -367,10 +367,17 @@ local function OnEvent(self, event, ...)
 			elseif message == "NOPITY_OFF" then
 				State.currentRollIsNoPity = false
 			elseif message:sub(1, 10) == "PITYBATCH:" then
-				for entry in message:sub(11):gmatch("[^,]+") do
-					local name, value = entry:match("^(.+):(%d+)$")
-					if name and value then
-						State.observedPity[name] = tonumber(value)
+				local rest = message:sub(11)
+				local flag, entriesStr = rest:match("^(%d):(.*)$")
+				if flag then
+					State.currentRollIsNoPity = (flag == "1")
+					if flag == "0" then
+						for entry in entriesStr:gmatch("[^,]+") do
+							local name, value = entry:match("^(.+):(%d+)$")
+							if name and value then
+								State.observedPity[name] = tonumber(value)
+							end
+						end
 					end
 				end
 			elseif message:sub(1, 5) == "SYNC_" then
