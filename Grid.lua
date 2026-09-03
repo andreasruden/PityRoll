@@ -27,14 +27,14 @@ local function OnSquareClick(clickFrame)
 			for _, squareData in ipairs(State.gridSquares) do
 				if squareData.clickFrame.playerName == State.selectedWinner then
 					squareData.clickFrame.selectionIndicator:Hide()
-					squareData.clickFrame.tieIndicator:Show()
+					squareData.clickFrame.leaderIndicator:Show()
 					break
 				end
 			end
 		end
 
 		State.selectedWinner = playerName
-		clickFrame.tieIndicator:Hide()
+		clickFrame.leaderIndicator:Hide()
 		clickFrame.selectionIndicator:Show()
 
 		print("|cFF00FF00PityRoll:|r Selected " .. playerName .. " as winner. Click Award Item again to confirm.")
@@ -52,6 +52,32 @@ local function OnSquareClick(clickFrame)
 		clickFrame.nameText:SetTextColor(0.5, 0.5, 0.5, 1)
 	else
 		clickFrame.nameText:SetTextColor(1, 1, 1, 1)
+	end
+
+	addon.UpdateLeaderIndicators()
+end
+
+function addon.UpdateLeaderIndicators()
+	if State.tieResolutionMode then return end
+
+	local highestTotal
+	for _, rollData in pairs(State.playerRolls) do
+		if not rollData.ignored then
+			local total = rollData.rollValue + rollData.rollBonus
+			if not highestTotal or total > highestTotal then
+				highestTotal = total
+			end
+		end
+	end
+
+	for _, squareData in ipairs(State.gridSquares) do
+		local rollData = State.playerRolls[squareData.clickFrame.playerName]
+		local total = rollData and (rollData.rollValue + rollData.rollBonus)
+		if highestTotal and rollData and not rollData.ignored and total == highestTotal then
+			squareData.clickFrame.leaderIndicator:Show()
+		else
+			squareData.clickFrame.leaderIndicator:Hide()
+		end
 	end
 end
 
@@ -83,11 +109,13 @@ local function CreateSquare(playerName, className, rollValue, rollBonus, isIgnor
 		square:SetAlpha(0.3)
 	end
 
-	local tieIndicator = pityRollFrame:CreateTexture(nil, "OVERLAY")
-	tieIndicator:SetSize(Constants.SQUARE_WIDTH + 4, Constants.SQUARE_HEIGHT + 4)
-	tieIndicator:SetColorTexture(1.0, 0.84, 0.0, 0.8)
-	tieIndicator:SetPoint("CENTER", square, "CENTER", 0, 0)
-	tieIndicator:Hide()
+	local leaderIndicator = pityRollFrame:CreateTexture(nil, "OVERLAY", nil, 7)
+	leaderIndicator:SetSize(12, 12)
+	leaderIndicator:SetTexture("Interface\\GroupFrame\\UI-Group-LeaderIcon")
+	leaderIndicator:SetTexCoord(0, 1, 0, 1)
+	leaderIndicator:SetVertexColor(1, 1, 1, 1)
+	leaderIndicator:SetPoint("TOPRIGHT", square, "TOPRIGHT", -2, -2)
+	leaderIndicator:Hide()
 
 	local selectionIndicator = pityRollFrame:CreateTexture(nil, "OVERLAY")
 	selectionIndicator:SetSize(Constants.SQUARE_WIDTH + 6, Constants.SQUARE_HEIGHT + 6)
@@ -122,7 +150,7 @@ local function CreateSquare(playerName, className, rollValue, rollBonus, isIgnor
 	clickFrame.playerName = playerName
 	clickFrame.square = square
 	clickFrame.nameText = nameText
-	clickFrame.tieIndicator = tieIndicator
+	clickFrame.leaderIndicator = leaderIndicator
 	clickFrame.selectionIndicator = selectionIndicator
 	clickFrame:SetScript("OnMouseDown", OnSquareClick)
 
@@ -131,7 +159,7 @@ local function CreateSquare(playerName, className, rollValue, rollBonus, isIgnor
 		nameText = nameText,
 		rollText = rollText,
 		clickFrame = clickFrame,
-		tieIndicator = tieIndicator,
+		leaderIndicator = leaderIndicator,
 		selectionIndicator = selectionIndicator
 	})
 end
@@ -163,6 +191,7 @@ function addon.AddSquareToGrid(className, playerName, rollValue, rollBonus, isNo
 	end
 
 	CreateSquare(playerName, className, rollValue, rollBonus, isIgnored or false, isNonStandard)
+	addon.UpdateLeaderIndicators()
 
 	print("|cFF00FF00Added square " .. #State.gridSquares .. " to the grid.|r")
 end
@@ -207,11 +236,13 @@ function addon.RegenerateGrid()
 					if State.selectedWinner == playerName then
 						squareData.clickFrame.selectionIndicator:Show()
 					else
-						squareData.clickFrame.tieIndicator:Show()
+						squareData.clickFrame.leaderIndicator:Show()
 					end
 					break
 				end
 			end
 		end
 	end
+
+	addon.UpdateLeaderIndicators()
 end

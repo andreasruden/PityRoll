@@ -235,8 +235,6 @@ local function HandleSystemMessage(message)
 		end
 	end
 
-	addon.AddSquareToGrid(className, playerName, rollValue, rollBonus, isNonStandard, startIgnored)
-
 	State.playerRolls[playerName] = {
 		rollValue = rollValue,
 		rollBonus = rollBonus,
@@ -244,6 +242,8 @@ local function HandleSystemMessage(message)
 		ignored = startIgnored,
 		nonStandardRoll = isNonStandard
 	}
+
+	addon.AddSquareToGrid(className, playerName, rollValue, rollBonus, isNonStandard, startIgnored)
 
 	-- When a pity roll arrives, auto-ignore all existing /roll 99 entries
 	if not isNonStandard then

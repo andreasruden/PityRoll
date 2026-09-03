@@ -4,7 +4,7 @@ local State = addon.State
 
 local function ExitTieResolutionMode()
 	for _, squareData in ipairs(State.gridSquares) do
-		squareData.clickFrame.tieIndicator:Hide()
+		squareData.clickFrame.leaderIndicator:Hide()
 		squareData.clickFrame.selectionIndicator:Hide()
 	end
 
@@ -96,7 +96,7 @@ local function EnterTieResolutionMode(tiedPlayersList)
 		end
 
 		if isTiedPlayer then
-			squareData.clickFrame.tieIndicator:Show()
+			squareData.clickFrame.leaderIndicator:Show()
 		end
 	end
 
