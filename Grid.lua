@@ -213,6 +213,12 @@ function addon.RegenerateGrid()
 		if squareData.clickFrame then
 			squareData.clickFrame:Hide()
 		end
+		if squareData.leaderIndicator then
+			squareData.leaderIndicator:Hide()
+		end
+		if squareData.selectionIndicator then
+			squareData.selectionIndicator:Hide()
+		end
 	end
 	State.gridSquares = {}
 
