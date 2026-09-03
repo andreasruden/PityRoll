@@ -102,7 +102,7 @@ local function EnterTieResolutionMode(tiedPlayersList)
 
 	local tiedList = table.concat(State.tiedPlayers, ", ")
 	print("|cFFFFFF00TIE DETECTED:|r " .. tiedList)
-	print("|cFF00FF00PityRoll:|r Click on a tied player (highlighted in gold) to select winner, then click Award Item again")
+	print("|cFF00FF00PityRoll:|r Click on a tied player (highlit by a crown) to select winner, then click Award Item again")
 
 	addon.UpdateButtonFrameButtons()
 end
@@ -193,7 +193,7 @@ function addon.FinishRollSession(specifiedWinner)
 			EnterTieResolutionMode(tiedPlayersList)
 			return
 		elseif not State.selectedWinner then
-			print("|cFFFF0000Error:|r Please select a winner by clicking on a tied player (highlighted in gold)")
+			print("|cFFFF0000Error:|r Please select a winner by clicking on a tied player (highlit by a crown)")
 			return
 		else
 			specifiedWinner = State.selectedWinner
