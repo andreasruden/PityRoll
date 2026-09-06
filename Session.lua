@@ -449,12 +449,18 @@ local function BossEndSessionInternal()
 		end
 	end
 
+	local bossPityAwards = {}
 	for _, playerName in ipairs(nonRollers) do
 		local oldPity = PityRollDB.players[playerName] or 0
 		local newPity = oldPity + Constants.BOSS_PITY
 		local cappedPity = math.min(newPity, Constants.MAX_PITY)
 		PityRollDB.players[playerName] = cappedPity
 		addon.RecordPityChange(playerName, oldPity, cappedPity)
+		table.insert(bossPityAwards, {playerName, cappedPity})
+	end
+
+	if #bossPityAwards > 0 and State.currentBossSession.isActive then
+		addon.RecordBossPity(State.currentBossSession.bossName, bossPityAwards)
 	end
 
 	if #nonRollers > 0 then

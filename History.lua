@@ -107,6 +107,21 @@ function addon.RecordHistoryEntry(bossName, itemLink, itemName, winner, allResul
     table.insert(encounter.items, itemEntry)
 end
 
+function addon.RecordBossPity(bossName, pityAwards)
+    if not PityRollHistoryDB or #pityAwards == 0 then
+        return
+    end
+
+    local encounter = FindCurrentEncounter()
+    if not encounter then
+        local timestamp = (State.currentBossSession and State.currentBossSession.isActive)
+            and State.currentBossSession.startTime or time()
+        encounter = CreateNewEncounter(bossName, timestamp)
+    end
+
+    encounter.bossPity = pityAwards
+end
+
 function addon.DumpHistory(limit)
     if not PityRollHistoryDB or #PityRollHistoryDB.encounters == 0 then
         print("|cFF00FF00PityRoll History:|r No history recorded")
@@ -131,6 +146,10 @@ function addon.DumpHistory(limit)
         for _, item in ipairs(encounter.items) do
             local losersList = FormatLosersList(item.losers)
             print(string.format("  - %s: %s (%s)", item.itemName, item.winner, losersList))
+        end
+
+        if encounter.bossPity and #encounter.bossPity > 0 then
+            print("  Boss pity: " .. FormatLosersList(encounter.bossPity))
         end
 
         print("")  -- Empty line between encounters
@@ -217,6 +236,10 @@ function addon.SerializeHistory(limit)
         for _, item in ipairs(encounter.items) do
             local losersList = FormatLosersList(item.losers)
             table.insert(lines, string.format("- %s: %s (%s)", item.itemName, item.winner, losersList))
+        end
+
+        if encounter.bossPity and #encounter.bossPity > 0 then
+            table.insert(lines, "- Boss pity: " .. FormatLosersList(encounter.bossPity))
         end
 
         table.insert(lines, "")
