@@ -87,7 +87,7 @@ function addon.ShowPityInfo(characterName)
 		return
 	end
 
-	characterName = characterName:sub(1,1):upper() .. characterName:sub(2):lower()
+	characterName = addon.NormalizeName(characterName)
 
 	local pityValue = PityRollDB.players[characterName]
 
@@ -115,7 +115,7 @@ function addon.AddPity(characterName, amount)
 		return
 	end
 
-	characterName = characterName:sub(1,1):upper() .. characterName:sub(2):lower()
+	characterName = addon.NormalizeName(characterName)
 
 	if PityRollDB.players[characterName] == nil then
 		print(string.format("|cFFFF0000Error:|r Character '%s' not found in pity database.", characterName))
@@ -170,7 +170,7 @@ function addon.SetRoll(characterName, newRollValue)
 		return
 	end
 
-	characterName = characterName:sub(1,1):upper() .. characterName:sub(2):lower()
+	characterName = addon.NormalizeName(characterName)
 
 	if not addon.Frames.pityRollFrame or not addon.Frames.pityRollFrame:IsShown() then
 		print("|cFFFF0000Error:|r Pity frame must be open to modify rolls. Roll an item first.")

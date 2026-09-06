@@ -90,7 +90,7 @@ function addon.DeserializePityDatabase(serialized)
     for entry in serialized:gmatch("[^,]+") do
         local name, pity = entry:match("^(.+):(%d+)$")
         if name and pity then
-            database[name] = tonumber(pity)
+            database[addon.NormalizeName(name)] = tonumber(pity)
         end
     end
 
@@ -104,8 +104,7 @@ function addon.SetSyncSource(playerName)
         return
     end
 
-    -- Normalize name (capitalize first letter)
-    playerName = playerName:sub(1, 1):upper() .. playerName:sub(2):lower()
+    playerName = addon.NormalizeName(playerName)
 
     -- Validate not setting self as source
     local selfName = UnitName("player")
@@ -169,8 +168,7 @@ end
 
 -- Handle sync query (follower receives from leader)
 function addon.HandleSyncQuery(message, sender)
-    -- Strip realm suffix from sender name
-    sender = sender:match("([^-]+)") or sender
+    sender = addon.NormalizeName(sender)
 
     -- Check if sender is our sync source
     if not PityRollDB.syncSource or PityRollDB.syncSource ~= sender then
@@ -200,8 +198,7 @@ function addon.HandleSyncResponse(message, sender)
         return  -- Ignore responses when not querying
     end
 
-    -- Strip realm suffix from sender name
-    sender = sender:match("([^-]+)") or sender
+    sender = addon.NormalizeName(sender)
 
     -- Parse response
     local status, hash = message:match("^SYNC_RESPONSE:(%w+):(.+)$")
@@ -305,7 +302,7 @@ end
 
 -- Handle force update from leader
 function addon.HandleForceUpdate(message, sender)
-    sender = sender:match("([^-]+)") or sender
+    sender = addon.NormalizeName(sender)
 
     if not PityRollDB.syncSource or PityRollDB.syncSource ~= sender then
         print("[PityRoll Sync] Rejected force update from " .. sender .. " (not your sync source)")
@@ -458,6 +455,7 @@ function addon.ParseImportedData(text)
         if not playerName or not oldPity or not newPity then
             return {success = false, error = "Invalid pity change format: " .. entry}
         end
+        playerName = addon.NormalizeName(playerName)
 
         pityChanges[playerName] = {
             old = tonumber(oldPity),

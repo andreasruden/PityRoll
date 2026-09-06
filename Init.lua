@@ -153,7 +153,7 @@ local function HandleWhisperCommand(message, sender)
 			return
 		end
 
-		local normalizedName = sender:sub(1,1):upper() .. sender:sub(2):lower()
+		local normalizedName = addon.NormalizeName(sender)
 
 		local pityValue = PityRollDB.players[normalizedName]
 
@@ -205,7 +205,7 @@ local function HandleSystemMessage(message)
 
 	rollValue = tonumber(rollValue)
 
-	playerName = playerName:match("([^-]+)") or playerName
+	playerName = addon.NormalizeName(playerName)
 	print("|cFF00FF00PityRoll DEBUG:|r Clean name: " .. playerName)
 
 	if State.playerRolls[playerName] then
@@ -378,7 +378,7 @@ local function OnEvent(self, event, ...)
 						for entry in entriesStr:gmatch("[^,]+") do
 							local name, value = entry:match("^(.+):(%d+)$")
 							if name and value then
-								State.observedPity[name] = tonumber(value)
+								State.observedPity[addon.NormalizeName(name)] = tonumber(value)
 							end
 						end
 					end
@@ -422,11 +422,12 @@ ChatFrame_AddMessageEventFilter("CHAT_MSG_SYSTEM", function(self, event, message
 		return false
 	end
 
-	-- Strip realm name for lookup
-	local cleanName = playerName:match("([^-]+)") or playerName
+	local cleanName = addon.NormalizeName(playerName)
 
+	-- Prefer our own authoritative data when we're running the session;
+	-- only fall back to broadcast data when we're a follower.
 	local pity
-	if next(State.observedPity) == nil then
+	if addon.Frames.pityRollFrame and addon.Frames.pityRollFrame:IsShown() then
 		pity = (PityRollDB.players and PityRollDB.players[cleanName]) or 0
 	else
 		pity = State.observedPity[cleanName] or 0
@@ -474,7 +475,7 @@ SlashCmdList["PITYROLL"] = function(msg)
 			print("|cFFFF0000Error:|r Usage: /pr add <class> <name> <roll> <bonus>")
 			print("|cFF00FF00Example:|r /pr add warrior Thrall 95 10")
 		else
-			addon.AddSquareToGrid(args[2], args[3], args[4], args[5])
+			addon.AddSquareToGrid(args[2], addon.NormalizeName(args[3]), args[4], args[5])
 		end
 	elseif lowerMsg == "abort" then
 		if addon.Frames.pityRollFrame then

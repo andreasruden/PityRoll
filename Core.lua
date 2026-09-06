@@ -75,6 +75,16 @@ addon.RegenerateGrid = function() end
 addon.EndSession = function() end
 
 -- Utility functions
+
+-- Canonical form for any player name received as input (chat, system messages,
+-- other players, user commands): strip a "-Realm" suffix if present, then
+-- upper-case the first letter and lower-case the rest.
+function addon.NormalizeName(name)
+	if not name or name == "" then return name end
+	name = name:match("([^-]+)") or name
+	return name:sub(1, 1):upper() .. name:sub(2):lower()
+end
+
 function addon.GetGroupChannel()
 	if IsInRaid() then
 		return "RAID"
@@ -85,16 +95,16 @@ function addon.GetGroupChannel()
 end
 
 function addon.GetPlayerClass(playerName)
-	local name = playerName:match("([^-]+)") or playerName
+	local name = addon.NormalizeName(playerName)
 
-	if name == UnitName("player") then
+	if name == addon.NormalizeName(UnitName("player")) then
 		local _, englishClass = UnitClass("player")
 		return englishClass
 	end
 
 	if IsInRaid() then
 		for i = 1, GetNumGroupMembers() do
-			if UnitName("raid" .. i) == name then
+			if addon.NormalizeName(UnitName("raid" .. i)) == name then
 				local _, englishClass = UnitClass("raid" .. i)
 				return englishClass
 			end
@@ -103,7 +113,7 @@ function addon.GetPlayerClass(playerName)
 
 	if IsInGroup() and not IsInRaid() then
 		for i = 1, GetNumSubgroupMembers() do
-			if UnitName("party" .. i) == name then
+			if addon.NormalizeName(UnitName("party" .. i)) == name then
 				local _, englishClass = UnitClass("party" .. i)
 				return englishClass
 			end
@@ -120,27 +130,25 @@ function addon.GetAllGroupMembers()
 		for i = 1, GetNumGroupMembers() do
 			local name = UnitName("raid" .. i)
 			if name then
-				name = name:match("([^-]+)") or name
-				table.insert(members, name)
+				table.insert(members, addon.NormalizeName(name))
 			end
 		end
 	elseif IsInGroup() then
 		local playerName = UnitName("player")
 		if playerName then
-			table.insert(members, playerName)
+			table.insert(members, addon.NormalizeName(playerName))
 		end
 
 		for i = 1, GetNumSubgroupMembers() do
 			local name = UnitName("party" .. i)
 			if name then
-				name = name:match("([^-]+)") or name
-				table.insert(members, name)
+				table.insert(members, addon.NormalizeName(name))
 			end
 		end
 	else
 		local playerName = UnitName("player")
 		if playerName then
-			table.insert(members, playerName)
+			table.insert(members, addon.NormalizeName(playerName))
 		end
 	end
 

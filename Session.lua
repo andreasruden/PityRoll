@@ -142,6 +142,10 @@ function addon.GiveItemToPlayer(winner, itemLink)
 end
 
 function addon.FinishRollSession(specifiedWinner)
+	if specifiedWinner then
+		specifiedWinner = addon.NormalizeName(specifiedWinner)
+	end
+
 	if not next(State.playerRolls) then
 		print("|cFF00FF00PityRoll:|r No rolls recorded. Closing window.")
 		addon.EndSession()
