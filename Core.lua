@@ -157,7 +157,8 @@ end
 
 function addon.CanAnnounce()
 	if IsMasterLooter() then return true end
-	return GetLootMethod() ~= "master" and UnitIsGroupLeader("player")
+	local method = GetLootMethod and GetLootMethod() or C_PartyInfo.GetLootMethod()
+	return method ~= "master" and method ~= 2 and UnitIsGroupLeader("player")
 end
 
 function addon.WriteToChat(message)
