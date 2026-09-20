@@ -82,7 +82,12 @@ addon.EndSession = function() end
 function addon.NormalizeName(name)
 	if not name or name == "" then return name end
 	name = name:match("([^-]+)") or name
-	return name:sub(1, 1):upper() .. name:sub(2):lower()
+
+	-- strupper/strlower are UTF-8 aware in the client, but sub() is byte based,
+	-- so the first character has to be split off using its UTF-8 lead byte.
+	local lead = name:byte(1)
+	local len = lead >= 240 and 4 or lead >= 224 and 3 or lead >= 192 and 2 or 1
+	return strupper(name:sub(1, len)) .. strlower(name:sub(len + 1))
 end
 
 function addon.GetGroupChannel()
