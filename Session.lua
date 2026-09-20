@@ -269,9 +269,11 @@ function addon.FinishRollSession(specifiedWinner)
 		State.currentRollItemName = nil
 	end
 
-	for playerName, rollData in pairs(State.playerRolls) do
-		if not rollData.ignored then
-			State.encounterRollers[playerName] = true
+	if State.currentBossSession.isActive then
+		for playerName, rollData in pairs(State.playerRolls) do
+			if not rollData.ignored then
+				State.encounterRollers[playerName] = true
+			end
 		end
 	end
 
@@ -344,7 +346,9 @@ function addon.ExecuteDirectAward(itemLink, itemName, playerName)
 		{}
 	)
 
-	State.encounterRollers[playerName] = true
+	if State.currentBossSession.isActive then
+		State.encounterRollers[playerName] = true
+	end
 
 	addon.GiveItemToPlayer(winner, itemLink)
 
@@ -426,6 +430,7 @@ function addon.BossBeginSession(bossName)
 	State.currentBossSession.itemNames = {}
 	State.currentBossSession.startTime = time()
 	State.currentBossSession.isActive = true
+	State.encounterRollers = {}
 
 	State.hasFinishedRollSession = false
 	addon.CreateButtonFrame()
